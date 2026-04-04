@@ -4,14 +4,31 @@ The idea is to centralize the logic for creating database connections and reposi
 """
 
 # Import internal modules
-from src.settings import get_settings
 from src.db.interfaces.base import BaseDatabase
-from src.db.interfaces.postgresql import PostgreSQLDatabase
+from src.db.interfaces.postgresql import PostgreSQLDatabase, PostgreSQLSettings
+from src.settings import get_settings
 
 
-def make_database():
+def make_database() -> BaseDatabase:
     """
     Factory function to create database instance.
 
-
+    :returns: An instance of database
+    :rtype: BaseDatabase
     """
+
+    # Get settings from centralized config
+    settings = get_settings()
+
+    # Create PostgreSQL config from settings
+    config = PostgreSQLSettings(
+        database_url=settings.postgres_database_url,
+        echo_sql=settings.postgres_echo_sql,
+        pool_size=settings.postgres_pool_size,
+        max_overflow=settings.postgres_max_overflow,
+    )
+
+    database = PostgreSQLDatabase(config=config)
+    database.startup()
+
+    return database
