@@ -6,10 +6,10 @@ The idea is to centralize the logic for creating database connections and reposi
 # Import internal modules
 from src.db.interfaces.base import BaseDatabase
 from src.db.interfaces.postgresql import PostgreSQLDatabase, PostgreSQLSettings
-from src.settings import get_settings
+from src.settings.config import get_settings
 
 
-def make_database() -> BaseDatabase:
+async def make_database() -> BaseDatabase:
     """
     Factory function to create database instance.
 
@@ -29,6 +29,6 @@ def make_database() -> BaseDatabase:
     )
 
     database = PostgreSQLDatabase(config=config)
-    database.startup()
+    await database.startup()
 
     return database

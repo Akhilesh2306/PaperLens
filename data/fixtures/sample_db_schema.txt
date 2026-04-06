@@ -1,0 +1,24 @@
+id                  — UUID PK
+semantic_scholar_id — String, unique, NOT NULL, indexed
+title               — String, NOT NULL
+abstract            — Text, nullable
+authors             — JSON, nullable (list of dicts)
+year                — Integer, nullable
+venue               — String, nullable
+fields_of_study     — JSON, nullable (list of strings)
+citation_count      — Integer, nullable
+is_open_access      — Boolean, nullable
+pdf_url             — String, nullable (extracted from openAccessPdf.url)
+publication_date    — String, nullable
+doi                 — String, nullable
+tldr                — Text, nullable (extracted text only)
+url                 — String, nullable (S2 paper page URL)
+raw_text            — Text, nullable
+sections            — JSON, nullable
+references          — JSON, nullable
+parser_used         — String, nullable
+parser_metadata     — JSON, nullable
+pdf_processed       — Boolean, default False, NOT NULL
+pdf_processing_date — DateTime, nullable
+created_at          — DateTime with timezone
+updated_at          — DateTime with timezone
