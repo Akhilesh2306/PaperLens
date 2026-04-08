@@ -29,7 +29,7 @@ class BaseDatabase(ABC):
         """
 
     @abstractmethod
-    async def get_db_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
         Get database session which returns context manager yielding Session object.
         """
