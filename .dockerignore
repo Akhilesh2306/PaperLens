@@ -1,0 +1,10 @@
+.venv
+.git
+.env
+notebooks
+data
+tests
+static
+airflow
+*.md
+__pycache__
