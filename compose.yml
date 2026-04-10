@@ -55,6 +55,42 @@ services:
     networks:
       - paperlens-network
 
+  # Airflow service
+  airflow:
+    build:
+      context: ./airflow
+      dockerfile: Dockerfile
+    container_name: paperlens-airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Airflow-specific environment setup
+      - AIRFLOW_HOME=/opt/airflow
+      - PYTHONPATH=/opt/airflow/src
+
+      # Container hostnames for Airflow
+      - POSTGRES_DATABASE_URL=postgresql+psycopg2://paperlens_user:paperlens_password@postgres:5432/paperlens_db
+      - OPENSEARCH__HOST=http://opensearch:9200
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./src:/opt/airflow/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - paperlens-network
+
   # OpenSearch service
   opensearch:
     image: opensearchproject/opensearch:3
@@ -127,6 +163,7 @@ volumes:
   postgres_data:
   opensearch_data:
   ollama_data:
+  airflow_logs:
 
 # Networks
 networks:
