@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PaperLens — Master Implementation Plan & Progress Tracker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;height:100%;overflow:hidden;background:#fff}
+.deck{display:flex;transition:transform .5s cubic-bezier(.4,0,.2,1);height:100vh}
+.slide{width:100vw;min-width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:60px 80px 100px;position:relative;overflow:hidden}
+.slide-scroll{overflow-y:auto;align-items:flex-start;padding-top:40px;padding-bottom:120px}
+.slide-inner{max-width:1440px;width:100%}
+.s-light{background:#fff;color:#2E2E38}.s-dark{background:#0F1923;color:#fff}.s-accent{background:#0D2137;color:#fff}.s-warm{background:#1A1A2E;color:#fff}
+
+/* NAV */
+.nav-bar{position:fixed;bottom:0;left:0;right:0;height:52px;background:rgba(15,25,35,.97);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;gap:3px;z-index:100;border-top:1px solid rgba(255,255,255,.1);overflow-x:auto;padding:0 8px;flex-wrap:nowrap}
+.nav-btn{height:32px;padding:0 8px;border-radius:6px;border:1.5px solid rgba(255,255,255,.2);background:0 0;color:#C4C4CD;font-family:inherit;font-size:9px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.nav-btn:hover{border-color:#4ECDC4;color:#4ECDC4}.nav-btn.active{background:#4ECDC4;border-color:#4ECDC4;color:#0F1923}
+.nav-arrow{width:32px;height:32px;border-radius:6px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-arrow:hover{background:rgba(78,205,196,.2);color:#4ECDC4}
+.nav-div{width:1px;height:20px;background:rgba(255,255,255,.15);margin:0 2px;flex-shrink:0}
+.nav-lbl{font-size:8px;color:#747480;letter-spacing:.5px;margin:0 3px;flex-shrink:0;text-transform:uppercase}
+
+/* TYPOGRAPHY */
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 12px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+.b-teal{background:#4ECDC4;color:#0F1923}.b-blue{background:#3B82F6;color:#fff}.b-purple{background:#8B5CF6;color:#fff}.b-orange{background:#F59E0B;color:#0F1923}.b-outline{border:1.5px solid currentColor;background:0 0}
+.title{font-size:36px;font-weight:700;letter-spacing:-1px;line-height:1.15;margin-bottom:12px}
+.s-dark .title,.s-accent .title,.s-warm .title{color:#fff}
+.subtitle{font-size:15px;font-weight:400;line-height:1.6;max-width:1000px;color:#747480;margin-bottom:24px}
+.s-dark .subtitle,.s-accent .subtitle,.s-warm .subtitle{color:#A0B4C8}
+.hl{color:#4ECDC4}.hl-b{color:#3B82F6}.hl-p{color:#8B5CF6}.hl-o{color:#F59E0B}
+
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:20px}
+.stat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:16px;text-align:center}
+.stat-card-light{background:#FAFAFA;border:1.5px solid #E7E7EA}
+.stat-num{font-size:32px;font-weight:700;margin-bottom:2px}
+.stat-lbl{font-size:10px;color:#A0B4C8;text-transform:uppercase;letter-spacing:.5px}
+.stat-card-light .stat-lbl{color:#747480}
+
+/* PROGRESS BAR */
+.prog-wrap{background:rgba(255,255,255,.08);border-radius:6px;height:8px;width:100%;margin-top:8px;overflow:hidden}
+.prog-wrap-light{background:#E7E7EA}
+.prog-bar{height:100%;border-radius:6px;transition:width .5s}
+.p-teal{background:#4ECDC4}.p-blue{background:#3B82F6}.p-purple{background:#8B5CF6}.p-orange{background:#F59E0B}
+
+/* GRIDS & CARDS */
+.grid{display:grid;gap:12px;margin-top:16px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:#FAFAFA;border:1.5px solid #E7E7EA;border-radius:10px;padding:16px 18px;transition:all .2s}
+.card:hover{border-color:#4ECDC4;box-shadow:0 4px 16px rgba(0,0,0,.06);transform:translateY(-2px)}
+.dark-card{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1)}
+.dark-card:hover{border-color:#4ECDC4;background:rgba(78,205,196,.05)}
+.dark-card .c-name{color:#fff}.dark-card .c-desc{color:#A0B4C8}
+.c-num{display:inline-block;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:10px;font-weight:700;margin-bottom:6px}
+.cn-teal{background:#4ECDC4;color:#0F1923}.cn-blue{background:#3B82F6;color:#fff}.cn-purple{background:#8B5CF6;color:#fff}.cn-orange{background:#F59E0B;color:#0F1923}
+.c-name{font-size:14px;font-weight:700;color:#2E2E38;margin-bottom:4px}
+.c-desc{font-size:11px;color:#747480;line-height:1.5;margin-bottom:6px}
+.c-stat{font-size:10px;font-weight:600}
+
+/* FILE TABLES */
+.ftbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
+.ftbl th{text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid rgba(255,255,255,.1);color:#A0B4C8}
+.ftbl td{padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:#C4C4CD}
+.ftbl-light th{border-bottom:2px solid #E7E7EA;color:#747480}
+.ftbl-light td{border-bottom:1px solid #F0F0F0;color:#2E2E38}
+.ftbl td:first-child{font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:10px;font-weight:600}
+.s-done{color:#4ECDC4}.s-wip{color:#F59E0B}.s-todo{color:#747480}
+
+/* SECTION */
+.sec{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:24px;margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid rgba(255,255,255,.1)}
+.sec-light{border-bottom:2px solid #E7E7EA;color:#747480}
+.sec-teal{color:#4ECDC4}.sec-blue{color:#3B82F6}.sec-purple{color:#8B5CF6}
+
+/* ARCH */
+.arch{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:18px 22px;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:11px;line-height:1.7;color:#A0B4C8;white-space:pre;overflow-x:auto;margin-top:16px}
+
+/* TRACK BADGES */
+.trk{display:inline-block;font-size:8px;font-weight:700;padding:2px 7px;border-radius:3px;letter-spacing:.5px;text-transform:uppercase;margin-right:4px;margin-bottom:4px}
+.trk-a{background:#4ECDC4;color:#0F1923}.trk-b{background:#3B82F6;color:#fff}.trk-c{background:#8B5CF6;color:#fff}
+
+/* TECH GRID */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:12px}
+.tech-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;font-size:11px;color:#C4C4CD}
+.tech-item strong{color:#fff;display:block;margin-bottom:1px;font-size:12px}
+.tech-item-light{background:#FAFAFA;border:1.5px solid #E7E7EA;color:#2E2E38}
+.tech-item-light strong{color:#2E2E38}
+
+/* TIMELINE */
+.timeline{display:flex;gap:0;margin-top:16px;width:100%}
+.tl-item{flex:1;text-align:center;position:relative;padding:0 2px}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin:0 auto 6px;position:relative;z-index:1}
+.tl-label{font-size:9px;font-weight:600;color:#C4C4CD;line-height:1.3}
+.tl-line{position:absolute;top:5px;left:50%;right:-50%;height:2px;background:rgba(255,255,255,.1);z-index:0}
+.tl-item:last-child .tl-line{display:none}
+
+/* PATTERN TABLE */
+.ptbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px}
+.ptbl th{text-align:left;padding:8px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#A0B4C8;border-bottom:2px solid rgba(255,255,255,.1)}
+.ptbl td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:#C4C4CD}
+.ptbl td:first-child{font-weight:600;color:#4ECDC4}
+
+@media(max-width:1024px){.slide{padding:30px 30px 90px}.g3,.g4{grid-template-columns:1fr 1fr}.title{font-size:28px}}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}.stat-row{grid-template-columns:1fr 1fr}.title{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ====== SLIDE 0: TITLE ====== -->
+<div class="slide s-dark">
+<div class="slide-inner">
+  <div class="badge b-teal">MASTER TRACKER</div>
+  <h1 class="title">PaperLens<br><span class="hl">Complete Implementation Plan</span></h1>
+  <p class="subtitle">Production-grade Agentic Literature Review Engine — 16 calendar weeks, 3 parallel tracks, ~170+ files. Backend + React Frontend + Infrastructure/Learning. Single source of truth for all progress.</p>
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-num hl">170+</div><div class="stat-lbl">Total Files</div></div>
+    <div class="stat-card"><div class="stat-num hl">16</div><div class="stat-lbl">Calendar Weeks</div></div>
+    <div class="stat-card"><div class="stat-num hl">3</div><div class="stat-lbl">Parallel Tracks</div></div>
+    <div class="stat-card"><div class="stat-num hl">4</div><div class="stat-lbl">Phases</div></div>
+    <div class="stat-card"><div class="stat-num hl">14</div><div class="stat-lbl">Files Done</div></div>
+    <div class="stat-card"><div class="stat-num hl-o">~5%</div><div class="stat-lbl">Overall Progress</div></div>
+  </div>
+  <div style="margin-top:20px">
+    <div style="font-size:11px;color:#A0B4C8;margin-bottom:6px">Overall Progress</div>
+    <div class="prog-wrap"><div class="prog-bar p-teal" style="width:5%"></div></div>
+  </div>
+  <div style="margin-top:16px;display:flex;gap:12px;align-items:center">
+    <span class="trk trk-a">Track A: Backend</span><span class="trk trk-b">Track B: Frontend</span><span class="trk trk-c">Track C: Infra/Learning</span>
+    <span style="font-size:10px;color:#6B7F94;margin-left:auto">Use ← → to navigate • 15 slides</span>
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 1: THREE TRACKS ====== -->
+<div class="slide s-light">
+<div class="slide-inner">
+  <div class="badge b-outline">ARCHITECTURE</div>
+  <h1 class="title">Three Tracks, One System</h1>
+  <p class="subtitle">Backend builds the RAG engine. Frontend provides the user interface. Infrastructure layers DevOps, MLOps, and cloud-native skills on top.</p>
+  <div class="grid g3">
+    <div class="card" style="border-left:4px solid #4ECDC4">
+      <span class="trk trk-a">TRACK A</span>
+      <div class="c-name">PaperLens Backend</div>
+      <div class="c-desc">8 backend weeks • ~80+ files<br>FastAPI, SQLAlchemy async, OpenSearch, Ollama, Airflow, LangGraph, Redis, Langfuse</div>
+      <div class="c-stat hl">Core agentic RAG application</div>
+      <div class="prog-wrap prog-wrap-light"><div class="prog-bar p-teal" style="width:18%"></div></div>
+      <div style="font-size:9px;color:#747480;margin-top:4px">~18% of Week 1</div>
+    </div>
+    <div class="card" style="border-left:4px solid #3B82F6">
+      <span class="trk trk-b">TRACK B</span>
+      <div class="c-name">PaperLens Frontend</div>
+      <div class="c-desc">6 frontend weeks • ~45 files<br>React 19, Vite 6, JavaScript ES2022+, Tailwind CSS 4, React Router 7, Vitest, Nginx</div>
+      <div class="c-stat hl-b">Production React SPA</div>
+      <div class="prog-wrap prog-wrap-light"><div class="prog-bar p-blue" style="width:0%"></div></div>
+      <div style="font-size:9px;color:#747480;margin-top:4px">Not started</div>
+    </div>
+    <div class="card" style="border-left:4px solid #8B5CF6">
+      <span class="trk trk-c">TRACK C</span>
+      <div class="c-name">Infrastructure & Learning</div>
+      <div class="c-desc">16 learning weeks • ~30+ files<br>Minikube → GKE, Helm, GitHub Actions, Terraform, Argo CD, MLflow, BentoML, Prometheus, Grafana</div>
+      <div class="c-stat hl-p">AI Developer → AI Integration Engineer</div>
+      <div class="prog-wrap prog-wrap-light"><div class="prog-bar p-purple" style="width:0%"></div></div>
+      <div style="font-size:9px;color:#747480;margin-top:4px">Not started</div>
+    </div>
+  </div>
+  <div style="margin-top:20px;background:#F7F7F9;border-radius:8px;padding:14px 18px;font-size:11px;color:#2E2E38">
+    <strong>Daily Schedule (3-4 hours):</strong> Block 1 (1.5-2h) Track A/B coding → Block 2 (1-1.5h) Track C learning → Block 3 (30m) Docs & review
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 2: TECH STACK ====== -->
+<div class="slide s-accent slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">TECHNOLOGY</div>
+  <h1 class="title">Complete Tech Stack</h1>
+  <p class="subtitle">40+ technologies across all tracks. Every one learned hands-on through real implementation.</p>
+  <div class="sec sec-teal">Backend (Track A) — 22 Technologies</div>
+  <div class="tech-grid">
+    <div class="tech-item"><strong>Python 3.12</strong>Application code</div>
+    <div class="tech-item"><strong>UV</strong>Package manager</div>
+    <div class="tech-item"><strong>FastAPI</strong>REST API (async)</div>
+    <div class="tech-item"><strong>SQLAlchemy 2.0</strong>ORM (async + asyncpg)</div>
+    <div class="tech-item"><strong>Pydantic v2</strong>Validation + Settings</div>
+    <div class="tech-item"><strong>httpx</strong>Async HTTP client</div>
+    <div class="tech-item"><strong>PostgreSQL 16</strong>Paper metadata</div>
+    <div class="tech-item"><strong>OpenSearch 2.19</strong>BM25 + KNN search</div>
+    <div class="tech-item"><strong>Ollama</strong>Local LLM (llama3.2:1b)</div>
+    <div class="tech-item"><strong>Apache Airflow</strong>Daily ingestion DAG</div>
+    <div class="tech-item"><strong>Redis 7</strong>Cache + memory</div>
+    <div class="tech-item"><strong>Langfuse v3</strong>Tracing + observability</div>
+    <div class="tech-item"><strong>LangGraph</strong>Agent state machine</div>
+    <div class="tech-item"><strong>LangChain</strong>LLM abstractions</div>
+    <div class="tech-item"><strong>Docling</strong>PDF parsing + tables</div>
+    <div class="tech-item"><strong>Jina AI v3</strong>1024-dim embeddings</div>
+    <div class="tech-item"><strong>Gradio</strong>Developer web UI</div>
+    <div class="tech-item"><strong>python-telegram-bot</strong>Telegram interface</div>
+    <div class="tech-item"><strong>Semantic Scholar</strong>200M+ papers API</div>
+    <div class="tech-item"><strong>Ruff</strong>Linting</div>
+    <div class="tech-item"><strong>pytest</strong>Async testing</div>
+    <div class="tech-item"><strong>Docker Compose</strong>13 services</div>
+  </div>
+  <div class="sec sec-blue">Frontend (Track B) — 10 Technologies</div>
+  <div class="tech-grid">
+    <div class="tech-item"><strong>React 19</strong>Component UI</div>
+    <div class="tech-item"><strong>Vite 6</strong>Build + dev server</div>
+    <div class="tech-item"><strong>JavaScript ES2022+</strong>No TypeScript</div>
+    <div class="tech-item"><strong>Tailwind CSS 4</strong>Utility-first styling</div>
+    <div class="tech-item"><strong>React Router 7</strong>Client-side SPA</div>
+    <div class="tech-item"><strong>Vitest</strong>Component testing</div>
+    <div class="tech-item"><strong>React Testing Library</strong>DOM testing</div>
+    <div class="tech-item"><strong>Nginx</strong>Production serve + proxy</div>
+    <div class="tech-item"><strong>ESLint</strong>Code quality</div>
+    <div class="tech-item"><strong>Prettier</strong>Formatting</div>
+  </div>
+  <div class="sec sec-purple">Infrastructure (Track C) — 18 Technologies</div>
+  <div class="tech-grid">
+    <div class="tech-item"><strong>Minikube → GKE</strong>Kubernetes</div>
+    <div class="tech-item"><strong>Helm</strong>K8s packaging</div>
+    <div class="tech-item"><strong>GitHub Actions</strong>CI/CD pipelines</div>
+    <div class="tech-item"><strong>Terraform</strong>GCP IaC</div>
+    <div class="tech-item"><strong>Argo CD</strong>GitOps deployment</div>
+    <div class="tech-item"><strong>Argo Rollouts</strong>Canary delivery</div>
+    <div class="tech-item"><strong>MLflow</strong>Experiment tracking</div>
+    <div class="tech-item"><strong>W&B</strong>Experiment logging</div>
+    <div class="tech-item"><strong>BentoML</strong>Model serving</div>
+    <div class="tech-item"><strong>ONNX</strong>Model export</div>
+    <div class="tech-item"><strong>Prometheus</strong>Metrics collection</div>
+    <div class="tech-item"><strong>Grafana</strong>Dashboards</div>
+    <div class="tech-item"><strong>Trivy</strong>Container scanning</div>
+    <div class="tech-item"><strong>Snyk</strong>Dependency scanning</div>
+    <div class="tech-item"><strong>SonarCloud</strong>SAST</div>
+    <div class="tech-item"><strong>OPA Gatekeeper</strong>Policy engine</div>
+    <div class="tech-item"><strong>Ragas</strong>RAG evaluation</div>
+    <div class="tech-item"><strong>Evidently</strong>Drift monitoring</div>
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 3: ARCHITECTURE ====== -->
+<div class="slide s-warm slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">SYSTEM DESIGN</div>
+  <h1 class="title">System Architecture</h1>
+  <p class="subtitle">Data ingestion → Search → RAG → Agentic reasoning → Multiple client interfaces → Full observability stack.</p>
+  <div class="arch">┌──────────────────┐    ┌─────────────────────────┐    ┌───────────────────┐
+│    Data Source    │    │  Data Processing (DAG)  │    │     Storage       │
+│ Semantic Scholar  │───▶│  Airflow: Fetch → Parse │───▶│ PostgreSQL (meta) │
+│       API        │    │  → Chunk → Embed → Index │    │ OpenSearch (search)│
+└──────────────────┘    └─────────────────────────┘    └───────────────────┘
+                                                              │
+┌──────────────────┐    ┌─────────────────────────┐           │
+│     Clients      │    │      API Layer          │◀──────────┘
+│  React Frontend  │◀──▶│  FastAPI + Routers      │
+│  Gradio UI       │    │  /search /ask /ask-agent │
+│  Telegram Bot    │    │  /synthesize /memory     │
+└──────────────────┘    └──────────┬──────────────┘
+                                   │
+                        ┌──────────▼──────────────┐
+                        │      Core Services      │
+                        │  Ollama (LLM)           │
+                        │  Jina (Embeddings)      │
+                        │  Redis (Cache+Memory)   │
+                        │  Langfuse (Tracing)     │
+                        │  LangGraph (Agent)      │
+                        │  ┌────────────────────┐ │
+                        │  │ Week 8 Extensions  │ │
+                        │  │ Synthesis Node     │ │
+                        │  │ Contradiction Node │ │
+                        │  │ Critic Node        │ │
+                        │  │ Memory Node        │ │
+                        │  └────────────────────┘ │
+                        └─────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────┐
+│                     Infrastructure Layer                            │
+│  Docker Compose (dev) → Helm Chart → GKE (prod) via Argo CD       │
+│  Prometheus + Grafana │ Trivy + Snyk │ Terraform (GCP IaC)         │
+└─────────────────────────────────────────────────────────────────────┘</div>
+</div>
+</div>
+
+<!-- ====== SLIDE 4: 16-WEEK CALENDAR ====== -->
+<div class="slide s-light slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-outline">TIMELINE</div>
+  <h1 class="title">16-Week Calendar</h1>
+  <p class="subtitle">Bird's eye view of all 16 calendar weeks across 3 tracks and 4 phases.</p>
+  <table class="ftbl ftbl-light" style="font-size:11px">
+    <tr><th style="width:40px">CW</th><th>Track A — Backend</th><th>Track B — Frontend</th><th>Track C — Infra/Learning</th><th style="width:60px">Phase</th></tr>
+    <tr><td><strong>1</strong></td><td class="s-wip">Backend W1 (Part 1) 🟡</td><td class="s-todo">—</td><td class="s-todo">K8s basics</td><td rowspan="4" style="background:#E8F0FE;color:#1565C0;font-weight:700;text-align:center;font-size:10px;vertical-align:middle">P1<br>Found.</td></tr>
+    <tr><td><strong>2</strong></td><td class="s-todo">Backend W1 (Part 2)</td><td class="s-todo">—</td><td class="s-todo">Deploy on Minikube</td></tr>
+    <tr><td><strong>3</strong></td><td class="s-todo">Backend W2 (Part 1)</td><td class="s-todo">—</td><td class="s-todo">GitHub Actions CI</td></tr>
+    <tr><td><strong>4</strong></td><td class="s-todo">Backend W2 (Part 2)</td><td class="s-todo">FE W1 (React shell)</td><td class="s-todo">Helm chart</td></tr>
+    <tr><td><strong>5</strong></td><td class="s-todo">Backend W3</td><td class="s-todo">FE W2 (Health)</td><td class="s-todo">MLflow + Classifier</td><td rowspan="4" style="background:#E6F4EA;color:#2E7D32;font-weight:700;text-align:center;font-size:10px;vertical-align:middle">P2<br>MLOps</td></tr>
+    <tr><td><strong>6</strong></td><td class="s-todo">Backend W4</td><td class="s-todo">FE W3 (Search)</td><td class="s-todo">DistilBERT + LoRA</td></tr>
+    <tr><td><strong>7</strong></td><td class="s-todo">Backend W5 (Part 1)</td><td class="s-todo">FE W3 (finish)</td><td class="s-todo">ONNX + BentoML</td></tr>
+    <tr><td><strong>8</strong></td><td class="s-todo">Backend W5 (Part 2)</td><td class="s-todo">FE W4 (Chat)</td><td class="s-todo">BentoML deploy</td></tr>
+    <tr><td><strong>9</strong></td><td class="s-todo">Backend W6 (Part 1)</td><td class="s-todo">FE W4 (finish)</td><td class="s-todo">Terraform + GCP</td><td rowspan="4" style="background:#FFF3E0;color:#E65100;font-weight:700;text-align:center;font-size:10px;vertical-align:middle">P3<br>Infra</td></tr>
+    <tr><td><strong>10</strong></td><td class="s-todo">Backend W6 (Part 2)</td><td class="s-todo">FE W5 (Routing)</td><td class="s-todo">GKE via Terraform</td></tr>
+    <tr><td><strong>11</strong></td><td class="s-todo">Polish + bugs</td><td class="s-todo">FE W5 (finish)</td><td class="s-todo">Prometheus + DevSecOps</td></tr>
+    <tr><td><strong>12</strong></td><td class="s-todo">Polish + bugs</td><td class="s-todo">FE W6 (Production)</td><td class="s-todo">OPA policies</td></tr>
+    <tr><td><strong>13</strong></td><td class="s-todo">Backend W7</td><td class="s-todo">FE W6 (finish)</td><td class="s-todo">Argo CD GitOps</td><td rowspan="4" style="background:#F3E5F5;color:#6A1B9A;font-weight:700;text-align:center;font-size:10px;vertical-align:middle">P4<br>Adv.</td></tr>
+    <tr><td><strong>14</strong></td><td class="s-todo">Backend W7 (finish)</td><td class="s-todo">—</td><td class="s-todo">Ragas + Evidently</td></tr>
+    <tr><td><strong>15</strong></td><td class="s-todo">Backend W8</td><td class="s-todo">—</td><td class="s-todo">AI Safety (Presidio)</td></tr>
+    <tr><td><strong>16</strong></td><td class="s-todo">Backend W8 (finish)</td><td class="s-todo">—</td><td class="s-todo">Portfolio polish</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ====== SLIDE 5: PHASE 1 ====== -->
+<div class="slide s-dark slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">PHASE 1 · CW 1-4</div>
+  <h1 class="title">Foundations</h1>
+  <p class="subtitle">FastAPI skeleton, data ingestion, React shell, Minikube cluster, Helm chart, CI pipeline.</p>
+  <div style="display:flex;gap:12px;margin-bottom:16px"><div style="flex:1"><div style="font-size:10px;color:#A0B4C8">Phase 1 Progress</div><div class="prog-wrap"><div class="prog-bar p-teal" style="width:10%"></div></div></div><div style="font-size:11px;color:#4ECDC4;font-weight:600;padding-top:12px">~10%</div></div>
+
+  <!-- CW1 -->
+  <div class="sec sec-teal">Calendar Week 1</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W1 Part 1: Infrastructure & Skeleton</div>
+  <table class="ftbl" data-sync="backend:bw1:1:3"><tr><th>#</th><th>File</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td>1</td><td>pyproject.toml</td><td>Project config, deps, ruff, pytest</td><td class="s-done">✅</td></tr>
+    <tr><td>2</td><td>.env.example / .env</td><td>Environment config (Week 1 vars)</td><td class="s-done">✅</td></tr>
+    <tr><td>3</td><td>src/settings/config.py</td><td>BaseConfigSettings, OpenSearchSettings, Settings, get_settings()</td><td class="s-done">✅</td></tr>
+    <tr><td>4</td><td>src/settings/logging.py</td><td>setup_logging() with basicConfig</td><td class="s-done">✅</td></tr>
+    <tr><td>5</td><td>src/exceptions.py</td><td>Full exception hierarchy (Repository, Parsing, PDF, OpenSearch, LLM, Config)</td><td class="s-done">✅</td></tr>
+    <tr><td>6</td><td>src/db/interfaces/base.py</td><td>BaseDatabase(ABC), BaseRepository(ABC) — async</td><td class="s-done">✅</td></tr>
+    <tr><td>7</td><td>src/db/interfaces/postgresql.py</td><td>Base(DeclarativeBase), PostgreSQLSettings, PostgreSQLDatabase</td><td class="s-done">✅</td></tr>
+    <tr><td>8</td><td>src/db/interfaces/__init__.py</td><td>DB interface exports</td><td class="s-done">✅</td></tr>
+    <tr><td>9</td><td>src/db/factory.py</td><td>async make_database() → PostgreSQLDatabase</td><td class="s-done">✅</td></tr>
+    <tr><td>10</td><td>src/models/paper.py</td><td>Paper ORM (25+ S2 fields, PDF, timestamps)</td><td class="s-done">✅</td></tr>
+    <tr><td>11</td><td>src/schemas/semantic_scholar/paper.py</td><td>SemanticScholarPaper, PaperBase, PaperCreate, PaperResponse</td><td class="s-done">✅</td></tr>
+    <tr><td>12</td><td>src/schemas/api/health.py</td><td>ServiceStatus, HealthResponse</td><td class="s-done">✅</td></tr>
+    <tr><td>13</td><td>src/repositories/paper.py</td><td>Async PaperRepository (CRUD, upsert, stats)</td><td class="s-done">✅</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> K8s Basics</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>Status</th></tr>
+    <tr><td>1</td><td>Install minikube, kubectl, helm</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Start minikube cluster (4GB, 2 CPUs)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Create/inspect/delete Pods, Deployments, Services</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>ConfigMaps vs Secrets</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>kubectl get/describe/logs/exec/apply/delete</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>k8s/learning/01-nginx-pod.yaml through 05-secret.yaml</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <!-- CW2 -->
+  <div class="sec sec-teal" style="margin-top:32px">Calendar Week 2</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W1 Part 2: Finish Skeleton</div>
+  <table class="ftbl" data-sync="backend:bw1:1:3"><tr><th>#</th><th>File</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td>14</td><td>src/middlewares.py</td><td>Request/response logging</td><td class="s-done">✅</td></tr>
+    <tr><td>15</td><td>src/dependencies.py</td><td>FastAPI DI: SettingsDep, DatabaseDep, SessionDep</td><td class="s-todo">❌</td></tr>
+    <tr><td>16</td><td>src/routers/health.py</td><td>GET /health (DB, OpenSearch, Ollama checks)</td><td class="s-todo">❌</td></tr>
+    <tr><td>17</td><td>src/main.py</td><td>FastAPI app with lifespan, router includes</td><td class="s-todo">❌</td></tr>
+    <tr><td>18</td><td>Dockerfile</td><td>Multi-stage (UV + Python 3.12-slim)</td><td class="s-todo">❌</td></tr>
+    <tr><td>19</td><td>compose.yml</td><td>api, postgres, opensearch, dashboards, ollama</td><td class="s-todo">❌</td></tr>
+    <tr><td>20</td><td>Makefile</td><td>start, stop, logs, test, lint, health</td><td class="s-todo">❌</td></tr>
+    <tr><td>21</td><td>airflow/Dockerfile</td><td>Airflow container</td><td class="s-todo">❌</td></tr>
+    <tr><td>22</td><td>airflow/entrypoint.sh</td><td>Airflow startup</td><td class="s-todo">❌</td></tr>
+    <tr><td>23</td><td>airflow/requirements-airflow.txt</td><td>Airflow deps</td><td class="s-todo">❌</td></tr>
+    <tr><td>24</td><td>airflow/dags/hello_world_dag.py</td><td>Test DAG</td><td class="s-todo">❌</td></tr>
+    <tr><td>25</td><td>tests/conftest.py</td><td>Global fixtures</td><td class="s-todo">❌</td></tr>
+    <tr><td>26</td><td>tests/unit/test_config.py</td><td>Config tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>27</td><td>tests/api/conftest.py</td><td>API test fixtures</td><td class="s-todo">❌</td></tr>
+    <tr><td>28</td><td>tests/api/routers/test_health.py</td><td>Health endpoint tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>29</td><td>.env.test</td><td>Test environment</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> Deploy on Minikube</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>Status</th></tr>
+    <tr><td>1</td><td>Create paperlens namespace</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Deploy PostgreSQL on K8s (PVC, probes, Secrets)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Build Docker image into Minikube</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>Deploy API (2 replicas, probes)</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>Access health via minikube service</td><td class="s-todo">❌</td></tr>
+    <tr><td>6-8</td><td>port-forward, rolling update, k8s manifests</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <!-- CW3 -->
+  <div class="sec sec-teal" style="margin-top:32px">Calendar Week 3</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W2 Part 1: Data Ingestion</div>
+  <table class="ftbl" data-sync="backend:bw2:1:3"><tr><th>#</th><th>File</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td>1</td><td>src/schemas/pdf_parser/models.py</td><td>PDFContent, PDFMetadata</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>src/services/pdf_parser/docling.py</td><td>Docling wrapper</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>src/services/pdf_parser/parser.py</td><td>PDFParserService</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>src/services/pdf_parser/factory.py</td><td>make_pdf_parser_service()</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>src/services/semantic_scholar/client.py</td><td>S2 API client (search, batch, citations, download)</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>src/services/semantic_scholar/factory.py</td><td>make_s2_client()</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>src/services/metadata_fetcher.py</td><td>Pipeline: S2 → download → parse → store</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> GitHub Actions CI</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>Status</th></tr>
+    <tr><td>1</td><td>.github/workflows/ci.yml (lint → test → build → push)</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Service containers (Postgres in CI)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>GHCR setup</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <!-- CW4 -->
+  <div class="sec sec-teal" style="margin-top:32px">Calendar Week 4</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W2 Part 2: Airflow DAG</div>
+  <table class="ftbl"><tr><th>#</th><th>File</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td>8-13</td><td>airflow/dags/paper_ingestion/*.py + DAG</td><td>common, setup, fetching, indexing, reporting, main DAG</td><td class="s-todo">❌</td></tr>
+    <tr><td>14-16</td><td>tests/unit/services/test_*.py</td><td>S2 client, PDF parser, metadata fetcher tests</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W1: React Foundations</div>
+  <table class="ftbl"><tr><th>#</th><th>File</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td>1</td><td>frontend/ (Vite + React init)</td><td>Project scaffold</td><td class="s-todo">❌</td></tr>
+    <tr><td>2-4</td><td>vite.config.js, styles/index.css, .env.example</td><td>Config + Tailwind + env</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>utils/constants.js</td><td>API_BASE_URL, NAV_LINKS</td><td class="s-todo">❌</td></tr>
+    <tr><td>6-8</td><td>common/LoadingSpinner, ErrorMessage, Badge</td><td>Reusable components</td><td class="s-todo">❌</td></tr>
+    <tr><td>9-12</td><td>layout/Navbar, Sidebar, StatusBar, Layout</td><td>App shell</td><td class="s-todo">❌</td></tr>
+    <tr><td>13-16</td><td>pages/HomePage, HealthPage, App, main</td><td>Pages + entry point</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> Helm Chart</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>Status</th></tr>
+    <tr><td>1-6</td><td>helm create, values.yaml, templates, values-dev/prod, install, lint/upgrade/rollback</td><td class="s-todo">❌</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ====== SLIDE 6: PHASE 2 ====== -->
+<div class="slide s-light slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-blue" style="background:#2E7D32;color:#fff">PHASE 2 · CW 5-8</div>
+  <h1 class="title">MLOps & Search</h1>
+  <p class="subtitle">BM25 + hybrid search, RAG system, search/chat frontend, Paper Classifier with MLflow + BentoML.</p>
+  <div style="display:flex;gap:12px;margin-bottom:16px"><div style="flex:1"><div style="font-size:10px;color:#747480">Phase 2 Progress</div><div class="prog-wrap prog-wrap-light"><div class="prog-bar p-blue" style="width:0%"></div></div></div><div style="font-size:11px;color:#3B82F6;font-weight:600;padding-top:12px">0%</div></div>
+
+  <!-- CW5 -->
+  <div class="sec sec-light" style="color:#4ECDC4">Calendar Week 5</div>
+  <div style="font-size:11px;color:#747480;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W3: BM25 Search — 9 files</div>
+  <table class="ftbl ftbl-light" data-sync="backend:bw3:0:2"><tr><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>opensearch/index_config_hybrid.py</td><td>Index mapping (text+keyword+vector, boosts, analyzer)</td><td class="s-todo">❌</td></tr>
+    <tr><td>opensearch/query_builder.py</td><td>BM25 query DSL (multi-match, filters, highlights)</td><td class="s-todo">❌</td></tr>
+    <tr><td>opensearch/client.py</td><td>OpenSearch client (health, indices, search)</td><td class="s-todo">❌</td></tr>
+    <tr><td>opensearch/factory.py</td><td>make_opensearch_client()</td><td class="s-todo">❌</td></tr>
+    <tr><td>schemas/api/search.py</td><td>HybridSearchRequest, SearchHit, SearchResponse</td><td class="s-todo">❌</td></tr>
+    <tr><td>routers/hybrid_search.py</td><td>POST /hybrid-search</td><td class="s-todo">❌</td></tr>
+    <tr><td>3 test files</td><td>Query builder, endpoint, schema tests</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W2: Health Dashboard — 8 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>1</td><td>frontend/src/api/client.js</td><td>Base fetch wrapper: apiGet(), apiPost()</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>frontend/src/api/health.js</td><td>fetchHealth() → apiGet("/api/v1/health")</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>frontend/src/components/health/ServiceStatusCard.jsx</td><td>Service card (name, status dot, message)</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>frontend/src/components/health/HealthDashboard.jsx</td><td>Dashboard: loading/error/data states</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>frontend/src/pages/HealthPage.jsx</td><td>Rewrite: useState + useEffect</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>frontend/src/components/layout/StatusBar.jsx</td><td>Update: live status from health data</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>frontend/src/App.jsx</td><td>Lift health state up</td><td class="s-todo">❌</td></tr>
+    <tr><td>8</td><td>frontend/vite.config.js</td><td>Add dev proxy: /api → localhost:8585</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-c">Track C</span> MLflow + Paper Classifier — 6 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Start MLflow server locally</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Create Paper Classifier project (paper-classifier/)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>paper-classifier/src/train_basic.py — TF-IDF + LogReg baseline</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>paper-classifier/src/registry_demo.py — Model registry lifecycle</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>paper-classifier/src/hyperparameter_search.py — 4 experiments</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>paper-classifier/src/train_wandb.py — W&B logging</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <!-- CW6 -->
+  <div class="sec sec-light" style="color:#4ECDC4;margin-top:24px">Calendar Week 6</div>
+  <div style="font-size:11px;color:#747480;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W4: Hybrid Search — 7 files + updates</div>
+  <table class="ftbl ftbl-light" data-sync="backend:bw4:0:2"><tr><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>schemas/indexing/models.py</td><td>ChunkMetadata, TextChunk</td><td class="s-todo">❌</td></tr>
+    <tr><td>indexing/text_chunker.py</td><td>Section-aware chunking (600w, 100w overlap)</td><td class="s-todo">❌</td></tr>
+    <tr><td>schemas/embeddings/jina.py</td><td>EmbeddingRequest, EmbeddingResponse</td><td class="s-todo">❌</td></tr>
+    <tr><td>embeddings/jina_client.py</td><td>Jina v3 (1024d, passage/query, batched)</td><td class="s-todo">❌</td></tr>
+    <tr><td>embeddings/factory.py</td><td>make_embeddings_client()</td><td class="s-todo">❌</td></tr>
+    <tr><td>indexing/hybrid_indexer.py</td><td>chunk → embed → bulk index</td><td class="s-todo">❌</td></tr>
+    <tr><td>indexing/factory.py</td><td>make_hybrid_indexing_service()</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W3: Search Interface — 8 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>1</td><td>frontend/src/api/search.js</td><td>searchPapers(), hybridSearchPapers()</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>frontend/src/components/search/SearchBar.jsx</td><td>Controlled input + submit form</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>frontend/src/components/search/FilterPanel.jsx</td><td>Filters: size, fields, min_citations, year, hybrid</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>frontend/src/components/search/PaperCard.jsx</td><td>Title, authors, abstract, citations, FoS, score</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>frontend/src/components/search/SearchResults.jsx</td><td>Results list: loading/error/empty/data states</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>frontend/src/components/search/Pagination.jsx</td><td>Prev/Next + page indicator</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>frontend/src/pages/SearchPage.jsx</td><td>Orchestrator: state, filters, handlers</td><td class="s-todo">❌</td></tr>
+    <tr><td>8</td><td>frontend/src/utils/formatters.js</td><td>Author/date formatters</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-c">Track C</span> DistilBERT + LoRA — 4 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>paper-classifier/src/train_distilbert.py — Fine-tune (CPU, 2000 samples)</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>paper-classifier/src/train_lora.py — LoRA (r=8, alpha=16)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Compare full fine-tune vs LoRA in MLflow UI</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>paper-classifier/src/compare_runs.py — Programmatic comparison</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <!-- CW7 -->
+  <div class="sec sec-light" style="color:#4ECDC4;margin-top:24px">Calendar Week 7</div>
+  <div style="font-size:11px;color:#747480;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W5 Part 1: RAG System — 6 files</div>
+  <table class="ftbl ftbl-light" data-sync="backend:bw5:0:2"><tr><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>ollama/prompts/rag_system.txt</td><td>System prompt (PaperLens, citations, 200w)</td><td class="s-todo">❌</td></tr>
+    <tr><td>ollama/prompts.py</td><td>RAGPromptBuilder, ResponseParser</td><td class="s-todo">❌</td></tr>
+    <tr><td>ollama/client.py</td><td>OllamaClient (health, generate, stream)</td><td class="s-todo">❌</td></tr>
+    <tr><td>ollama/factory.py</td><td>make_ollama_client()</td><td class="s-todo">❌</td></tr>
+    <tr><td>schemas/api/ask.py</td><td>AskRequest, AskResponse, FeedbackRequest</td><td class="s-todo">❌</td></tr>
+    <tr><td>routers/ask.py</td><td>POST /ask + POST /stream (SSE)</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W3 (Finish) — 3 tasks</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>frontend/src/App.jsx — temporary state-based page switcher</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Inject FilterPanel into Sidebar on search page</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Polish search page end-to-end</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-c">Track C</span> ONNX + BentoML — 6 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>paper-classifier/src/export_onnx.py — Export DistilBERT to ONNX</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Benchmark PyTorch vs ONNX (1.5-3x speedup)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>paper-classifier/src/serve_bentoml.py — BentoML service</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>paper-classifier/bentofile.yaml — BentoML config</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>bentoml build + bentoml serve</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>bentoml containerize → Docker image</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <!-- CW8 -->
+  <div class="sec sec-light" style="color:#4ECDC4;margin-top:24px">Calendar Week 8</div>
+  <div style="font-size:11px;color:#747480;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W5 Part 2: Gradio + Finish RAG — 3 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>7</td><td>src/gradio_app.py</td><td>Gradio: chat, model selector, toggles, streaming</td><td class="s-todo">❌</td></tr>
+    <tr><td>8</td><td>gradio_launcher.py</td><td>Simple launcher: adds src/ to path</td><td class="s-todo">❌</td></tr>
+    <tr><td>9</td><td>tests/api/routers/test_ask.py</td><td>RAG endpoint tests</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W4: Chat Interface + Streaming — 7 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>1</td><td>frontend/src/api/chat.js</td><td>askQuestion(), streamQuestion() (SSE + abort)</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>frontend/src/hooks/useChat.js</td><td>useReducer-based chat state management</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>frontend/src/components/chat/ChatMessage.jsx</td><td>User/Assistant bubbles, timestamp, sources</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>frontend/src/components/chat/SourceCard.jsx</td><td>Citation card: title, authors, venue, relevance</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>frontend/src/components/chat/ChatInput.jsx</td><td>Textarea + submit, disabled while streaming</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>frontend/src/components/chat/ChatPanel.jsx</td><td>Chat container with auto-scroll (useRef)</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>frontend/src/pages/ChatPage.jsx</td><td>Chat page using useChat() hook</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:12px 0 8px"><span class="trk trk-c">Track C</span> BentoML Deploy + W&B — 3 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Deploy BentoML service to Minikube</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Compare MLflow vs W&B workflows</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Final Paper Classifier evaluation and documentation</td><td class="s-todo">❌</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ====== SLIDE 7: PHASE 3 ====== -->
+<div class="slide s-accent slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-orange">PHASE 3 · CW 9-12</div>
+  <h1 class="title">Infrastructure & Security</h1>
+  <p class="subtitle">Observability, caching, routing, frontend production, Terraform → GKE, Prometheus, DevSecOps.</p>
+  <div style="display:flex;gap:12px;margin-bottom:16px"><div style="flex:1"><div style="font-size:10px;color:#A0B4C8">Phase 3 Progress</div><div class="prog-wrap"><div class="prog-bar p-orange" style="width:0%"></div></div></div><div style="font-size:11px;color:#F59E0B;font-weight:600;padding-top:12px">0%</div></div>
+
+  <div class="sec sec-teal">CW 9: Observability + Terraform</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W6 Part 1: Observability &amp; Caching — 5 files</div>
+  <table class="ftbl"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>1</td><td>src/services/langfuse/client.py</td><td>LangfuseTracer: callbacks, trace, graceful disable</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>src/services/langfuse/tracer.py</td><td>RAGTracer: per-stage context managers</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>src/services/langfuse/factory.py</td><td>make_langfuse_tracer() (LRU cached)</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>src/services/cache/client.py</td><td>CacheClient: SHA256 key, O(1) GET/SET, TTL 6h</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>src/services/cache/factory.py</td><td>make_redis_client(), make_cache_client()</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W4 (Finish): Polish Chat — 3 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Finish chat streaming edge cases</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Polish ChatMessage/SourceCard rendering</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Add chat-first as default page</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> Terraform + GCP Setup — 7 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Install Terraform, practice with Docker provider</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>infra/terraform/practice/main.tf — Local Docker practice</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Set up GCP Free Trial ($300/90 days)</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>Enable GCP APIs (GKE, Artifact Registry, Cloud SQL)</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>infra/terraform/modules/vpc/main.tf — VPC module</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>infra/terraform/environments/dev/main.tf — Dev env</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>Apply VPC to GCP</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <div class="sec sec-teal" style="margin-top:20px">CW 10: Finish Observability + GKE</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W6 Part 2: Finish Observability — 3 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Verify Langfuse traces in UI</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Verify Redis caching (check speedup)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Test graceful degradation (cache down → skip)</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W5: Routing, Agent &amp; Synthesis — 17 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>1</td><td>frontend/src/context/SettingsContext.jsx</td><td>Global settings Context + Provider</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>frontend/src/hooks/useLocalStorage.js</td><td>Persist settings to localStorage</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>frontend/src/App.jsx</td><td>React Router + SettingsProvider</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>frontend/src/components/layout/Layout.jsx</td><td>Update: Outlet instead of children</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>frontend/src/components/layout/Navbar.jsx</td><td>Update: Link + useLocation</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>frontend/src/api/agent.js</td><td>askAgent() → POST /ask-agent</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>frontend/src/api/synthesis.js</td><td>synthesizePapers() → POST /synthesize</td><td class="s-todo">❌</td></tr>
+    <tr><td>8</td><td>frontend/src/api/memory.js</td><td>fetchMemories() → GET /memory</td><td class="s-todo">❌</td></tr>
+    <tr><td>9</td><td>frontend/src/components/agent/ReasoningTrace.jsx</td><td>Agent trace timeline</td><td class="s-todo">❌</td></tr>
+    <tr><td>10</td><td>frontend/src/components/synthesis/SynthesisForm.jsx</td><td>Multi-query input form</td><td class="s-todo">❌</td></tr>
+    <tr><td>11</td><td>frontend/src/components/synthesis/ContradictionCard.jsx</td><td>Contradiction display</td><td class="s-todo">❌</td></tr>
+    <tr><td>12</td><td>frontend/src/components/synthesis/FindingsList.jsx</td><td>Key findings with themes</td><td class="s-todo">❌</td></tr>
+    <tr><td>13</td><td>frontend/src/pages/SynthesisPage.jsx</td><td>Synthesis orchestrator</td><td class="s-todo">❌</td></tr>
+    <tr><td>14</td><td>frontend/src/pages/ChatPage.jsx</td><td>Update: agent mode toggle</td><td class="s-todo">❌</td></tr>
+    <tr><td>15</td><td>frontend/src/components/memory/MemoryCard.jsx</td><td>Memory item card</td><td class="s-todo">❌</td></tr>
+    <tr><td>16</td><td>frontend/src/components/memory/MemorySidebar.jsx</td><td>Memory panel in sidebar</td><td class="s-todo">❌</td></tr>
+    <tr><td>17</td><td>frontend/src/pages/NotFoundPage.jsx</td><td>404 page</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> GKE Cluster via Terraform — 6 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>infra/terraform/modules/gke/main.tf — GKE Autopilot</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>infra/terraform/modules/artifact-registry/main.tf</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Apply GKE + Artifact Registry to GCP</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>Push Docker image to Artifact Registry</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>Deploy PaperLens on GKE via Helm</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>Set up Terraform remote state in GCS</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <div class="sec sec-teal" style="margin-top:20px">CW 11: Polish + Monitoring</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend: Polish + Bug Fixes — 3 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Fix any bugs from Weeks 1-6</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Write missing tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Code review and cleanup</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W5 (Finish) — 3 tasks</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Verify all routes end-to-end</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Polish synthesis page rendering</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Test Context settings persistence</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> Prometheus/Grafana + DevSecOps — 9 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>src/metrics.py — Prometheus metrics (counters/histograms)</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Add Prometheus middleware to FastAPI</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Add /metrics endpoint</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>Install kube-prometheus-stack via Helm</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>Create ServiceMonitor for PaperLens</td><td class="s-todo">❌</td></tr>
+    <tr><td>6</td><td>Build Grafana dashboard (rate, latency, errors, cache)</td><td class="s-todo">❌</td></tr>
+    <tr><td>7</td><td>Add Trivy container scanning to CI</td><td class="s-todo">❌</td></tr>
+    <tr><td>8</td><td>Add Snyk dependency scanning to CI</td><td class="s-todo">❌</td></tr>
+    <tr><td>9</td><td>Add SonarCloud SAST to CI</td><td class="s-todo">❌</td></tr>
+  </table>
+
+  <div class="sec sec-teal" style="margin-top:20px">CW 12: Production Frontend + OPA</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend: Integration Tests + Baseline — 2 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Integration tests against real containers</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Performance baseline measurements</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-b">Track B</span> FE W6: Production Polish — 18 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>1</td><td>frontend/src/components/common/ErrorBoundary.jsx</td><td>Error boundary (class component)</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Dark/light theme toggle</td><td>Tailwind dark mode + Context</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Responsive layout</td><td>Mobile hamburger, stacked cards</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>frontend/src/App.jsx</td><td>React.lazy + Suspense for code splitting</td><td class="s-todo">❌</td></tr>
+    <tr><td>5</td><td>frontend/tests/setup.js</td><td>Vitest + RTL setup</td><td class="s-todo">❌</td></tr>
+    <tr><td>6-12</td><td>frontend/tests/components/*.test.jsx</td><td>7 component tests (Spinner, Badge, PaperCard, SearchBar, ChatMessage, ChatInput, HealthDashboard)</td><td class="s-todo">❌</td></tr>
+    <tr><td>13-14</td><td>frontend/tests/hooks/*.test.js</td><td>2 hook tests (useChat, useLocalStorage)</td><td class="s-todo">❌</td></tr>
+    <tr><td>15</td><td>frontend/Dockerfile</td><td>Multi-stage: Node build → Nginx serve</td><td class="s-todo">❌</td></tr>
+    <tr><td>16</td><td>frontend/nginx.conf</td><td>SPA routing + API proxy + SSE support</td><td class="s-todo">❌</td></tr>
+    <tr><td>17</td><td>frontend/.dockerignore</td><td>Exclude node_modules, dist, tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>18</td><td>compose.yml</td><td>Update: add frontend service (port 3000:80)</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#A0B4C8;margin:12px 0 8px"><span class="trk trk-c">Track C</span> OPA Gatekeeper + DevSecOps CI — 4 tasks</div>
+  <table class="ftbl"><tr><th>#</th><th>Task</th><th>St</th></tr>
+    <tr><td>1</td><td>Install OPA Gatekeeper on K8s</td><td class="s-todo">❌</td></tr>
+    <tr><td>2</td><td>Create constraint templates (resource limits, no privileged)</td><td class="s-todo">❌</td></tr>
+    <tr><td>3</td><td>Verify policies block non-compliant deployments</td><td class="s-todo">❌</td></tr>
+    <tr><td>4</td><td>Full CI: lint → test → scan → build → push</td><td class="s-todo">❌</td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ====== SLIDE 8: PHASE 4 ====== -->
+<div class="slide s-light slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-purple">PHASE 4 · CW 13-16</div>
+  <h1 class="title">Advanced & Portfolio</h1>
+  <p class="subtitle">Agentic RAG (LangGraph), PaperLens extensions, Argo CD, Ragas, Evidently, Presidio, portfolio polish.</p>
+  <div style="display:flex;gap:12px;margin-bottom:16px"><div style="flex:1"><div style="font-size:10px;color:#747480">Phase 4 Progress</div><div class="prog-wrap prog-wrap-light"><div class="prog-bar p-purple" style="width:0%"></div></div></div><div style="font-size:11px;color:#8B5CF6;font-weight:600;padding-top:12px">0%</div></div>
+
+  <div class="sec sec-light" style="color:#4ECDC4">CW 13: Agentic RAG + GitOps</div>
+  <div style="font-size:11px;color:#747480;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W7: 18 files</div>
+  <table class="ftbl ftbl-light" data-sync="backend:bw7:0:2"><tr><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>agents/config.py</td><td>GraphConfig</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/models.py</td><td>GuardrailScoring, GradeDocuments, SourceItem, etc.</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/state.py</td><td>AgentState(TypedDict) with messages, queries, attempts</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/context.py</td><td>Context(dataclass) all clients</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/prompts.py</td><td>7 prompts: guardrail, decision, grade, rewrite, generate, system, direct</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/tools.py</td><td>create_retriever_tool()</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/utils.py</td><td>Shared node utilities</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/guardrail_node.py</td><td>Scientific research filter (score 0-100)</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/out_of_scope_node.py</td><td>Polite rejection</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/retrieve_node.py</td><td>Create tool calls</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/grade_documents_node.py</td><td>Binary relevance grading</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/rewrite_query_node.py</td><td>LLM query rewriting</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/generate_answer_node.py</td><td>Answer with [Author, Year] citations</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/agentic_rag.py</td><td>AgenticRAGService (_build_graph, ask)</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/factory.py</td><td>make_agentic_rag_service()</td><td class="s-todo">❌</td></tr>
+    <tr><td>routers/agentic_ask.py</td><td>POST /ask-agent</td><td class="s-todo">❌</td></tr>
+    <tr><td>telegram/bot.py</td><td>Telegram bot interface</td><td class="s-todo">❌</td></tr>
+    <tr><td>telegram/factory.py</td><td>make_telegram_bot()</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:10px 0 6px"><span class="trk trk-c">Track C</span> Argo CD: install, Application CRD, auto-sync, canary rollouts — 5 tasks</div>
+
+  <div class="sec sec-light" style="color:#4ECDC4;margin-top:24px">CW 14: Finish Agentic RAG + Evaluation</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W7 (finish): Agent Tests — 6 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>19</td><td>tests/unit/services/agents/test_agentic_rag.py</td><td>Agent service tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>20</td><td>tests/unit/services/agents/test_models.py</td><td>Model tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>21</td><td>tests/unit/services/agents/test_nodes.py</td><td>Node tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>22</td><td>tests/unit/services/agents/test_tools.py</td><td>Tool tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>23</td><td>tests/api/routers/test_agentic_ask.py</td><td>Endpoint tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>24</td><td>tests/unit/services/test_telegram.py</td><td>Telegram tests</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:10px 0 6px"><span class="trk trk-c">Track C</span> Ragas + Evidently — 5 tasks (faithfulness eval, answer relevance, drift monitoring, quality gates)</div>
+
+  <div class="sec sec-light" style="color:#4ECDC4;margin-top:24px">CW 15: PaperLens Extensions</div>
+  <div style="font-size:11px;color:#747480;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W8: 13 files</div>
+  <table class="ftbl ftbl-light" data-sync="backend:bw8:0:2"><tr><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>agents/nodes/synthesis_node.py</td><td>Cross-paper synthesis (themes, agreements, gaps)</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/contradiction_node.py</td><td>Detect conflicting findings between papers</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/critic_node.py</td><td>Quality scoring + reflection loop (retry if < 0.7)</td><td class="s-todo">❌</td></tr>
+    <tr><td>agents/nodes/memory_node.py</td><td>Retrieve prior context + store new findings</td><td class="s-todo">❌</td></tr>
+    <tr><td>memory/client.py</td><td>ResearchMemoryClient (Redis, TTL=90d)</td><td class="s-todo">❌</td></tr>
+    <tr><td>memory/factory.py</td><td>make_memory_client()</td><td class="s-todo">❌</td></tr>
+    <tr><td>routers/synthesis.py</td><td>POST /api/v1/synthesize</td><td class="s-todo">❌</td></tr>
+    <tr><td colspan="2">+ update prompts.py, models.py, state.py, agentic_rag.py, context.py, schemas/api/ask.py</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:10px 0 6px"><span class="trk trk-c">Track C</span> CW 15: Presidio + Model cards — 5 tasks</div>
+
+  <div class="sec sec-light" style="color:#4ECDC4;margin-top:24px">CW 16: Finish Extensions + Portfolio</div>
+  <div style="font-size:11px;color:#A0B4C8;margin-bottom:8px"><span class="trk trk-a">Track A</span> Backend W8 (finish): Tests + Evaluation + Gradio — 9 files</div>
+  <table class="ftbl ftbl-light"><tr><th>#</th><th>File</th><th>Purpose</th><th>St</th></tr>
+    <tr><td>14</td><td>src/gradio_app.py</td><td>Update: add "Literature Synthesis" tab</td><td class="s-todo">❌</td></tr>
+    <tr><td>15</td><td>tests/unit/services/agents/test_synthesis_node.py</td><td>Synthesis tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>16</td><td>tests/unit/services/agents/test_contradiction_node.py</td><td>Contradiction tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>17</td><td>tests/unit/services/agents/test_critic_node.py</td><td>Critic tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>18</td><td>tests/unit/services/agents/test_memory_node.py</td><td>Memory tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>19</td><td>tests/unit/services/test_memory_client.py</td><td>Memory client tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>20</td><td>tests/api/routers/test_synthesis.py</td><td>Synthesis endpoint tests</td><td class="s-todo">❌</td></tr>
+    <tr><td>21</td><td>tests/evaluation/test_synthesis_quality.py</td><td>Quality evaluation</td><td class="s-todo">❌</td></tr>
+    <tr><td>22</td><td>tests/evaluation/ragas_eval.py</td><td>RAGAS metrics</td><td class="s-todo">❌</td></tr>
+  </table>
+  <div style="font-size:11px;color:#747480;margin:10px 0 6px"><span class="trk trk-c">Track C</span> CW 16: Portfolio polish + Interview prep — 8 tasks</div>
+</div>
+</div>
+
+<!-- ====== SLIDE 9: AGENT GRAPH ====== -->
+<div class="slide s-dark slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">AGENTIC RAG</div>
+  <h1 class="title">LangGraph Agent Flow</h1>
+  <p class="subtitle">Week 7: 7-node base graph. Week 8: extended to 11 nodes with synthesis, contradiction, critic, and memory.</p>
+  <div class="arch">Week 7 — Base Graph (7 nodes):
+START → guardrail → [in-scope?]
+  ├─ NO → out_of_scope → END
+  └─ YES → retrieve → tool_retrieve → grade_documents
+                                         ├─ relevant → generate_answer → END
+                                         └─ irrelevant → rewrite_query → retrieve (max 2)
+
+Week 8 — Extended Graph (11 nodes):
+START → guardrail → [in-scope?]
+  ├─ NO → out_of_scope → END
+  └─ YES → retrieve → tool_retrieve → grade_documents
+                                         ├─ irrelevant → rewrite_query → retrieve (max 2)
+                                         └─ relevant → synthesis_node
+                                                          → contradiction_node
+                                                          → generate_answer
+                                                          → critic_node → [quality ≥ 0.7?]
+                                                                ├─ YES → memory_node → END
+                                                                └─ NO → generate_answer (max 2 retries)</div>
+  <div style="margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+    <div class="dark-card" style="padding:12px"><div class="c-name" style="color:#4ECDC4;font-size:12px">Synthesis</div><div class="c-desc">Groups chunks by paper, finds themes + agreements + gaps</div></div>
+    <div class="dark-card" style="padding:12px"><div class="c-name" style="color:#F59E0B;font-size:12px">Contradiction</div><div class="c-desc">Detects conflicting findings, methods, conclusions across papers</div></div>
+    <div class="dark-card" style="padding:12px"><div class="c-name" style="color:#3B82F6;font-size:12px">Critic</div><div class="c-desc">Scores faithfulness, completeness, citations; retries if &lt; 0.7</div></div>
+    <div class="dark-card" style="padding:12px"><div class="c-name" style="color:#8B5CF6;font-size:12px">Memory</div><div class="c-desc">Retrieves prior research + stores new findings (Redis, TTL 90d)</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 10: TESTING ====== -->
+<div class="slide s-light slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-outline">QUALITY</div>
+  <h1 class="title">Testing Strategy</h1>
+  <p class="subtitle">Backend: 25+ test files with pytest-asyncio. Frontend: 9 test files with Vitest + RTL. Evaluation: Ragas + custom quality checks.</p>
+  <div class="grid g2">
+    <div class="card" style="border-left:4px solid #4ECDC4">
+      <div class="c-name">Backend Tests (~25 files)</div>
+      <div class="c-desc" style="font-family:monospace;font-size:10px;line-height:1.8;white-space:pre">tests/
+├── conftest.py (global)
+├── api/conftest.py + routers/
+│   test_health, test_hybrid_search,
+│   test_ask, test_agentic_ask,
+│   test_synthesis
+├── evaluation/
+│   test_synthesis_quality, ragas_eval
+├── integration/test_services
+└── unit/
+    test_config, schemas/test_search,
+    services/{test_s2_client,
+    test_pdf_parser, test_metadata,
+    test_opensearch_qb, test_telegram,
+    test_memory_client,
+    agents/{test_agentic_rag,
+    test_models, test_nodes, test_tools,
+    test_synthesis_node,
+    test_contradiction_node,
+    test_critic_node, test_memory_node}}</div>
+    </div>
+    <div class="card" style="border-left:4px solid #3B82F6">
+      <div class="c-name">Frontend Tests (~9 files)</div>
+      <div class="c-desc" style="font-family:monospace;font-size:10px;line-height:1.8;white-space:pre">frontend/tests/
+├── setup.js
+├── components/
+│   LoadingSpinner.test.jsx
+│   Badge.test.jsx
+│   PaperCard.test.jsx
+│   SearchBar.test.jsx
+│   ChatMessage.test.jsx
+│   ChatInput.test.jsx
+│   HealthDashboard.test.jsx
+└── hooks/
+    useChat.test.js
+    useLocalStorage.test.js</div>
+    </div>
+  </div>
+  <div style="margin-top:16px">
+    <table class="ftbl ftbl-light">
+      <tr><th>Principle</th><th>Backend</th><th>Frontend</th></tr>
+      <tr><td>Mock externals</td><td>Mock OpenSearch, Ollama, Jina, S2</td><td>Mock fetch / API calls</td></tr>
+      <tr><td>DI overrides</td><td>app.dependency_overrides</td><td>Context providers in tests</td></tr>
+      <tr><td>Async</td><td>pytest-asyncio, AsyncMock</td><td>—</td></tr>
+      <tr><td>DOM testing</td><td>—</td><td>React Testing Library (user-centric)</td></tr>
+      <tr><td>Quality gates</td><td>Ragas faithfulness ≥ 0.7</td><td>All components render</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 11: DESIGN PATTERNS ====== -->
+<div class="slide s-accent slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">ENGINEERING</div>
+  <h1 class="title">Design Patterns & SOLID</h1>
+  <p class="subtitle">16 patterns used across backend and frontend. Every pattern serves a specific architectural goal.</p>
+  <table class="ptbl">
+    <tr><th>Pattern</th><th>Where</th><th>Why</th></tr>
+    <tr><td>Factory</td><td>Every service has factory.py</td><td>Decouple construction; enable DI</td></tr>
+    <tr><td>Repository</td><td>PaperRepository</td><td>Isolate DB queries from business logic</td></tr>
+    <tr><td>Dependency Injection</td><td>FastAPI Depends(), LangGraph Context</td><td>Testability, loose coupling</td></tr>
+    <tr><td>Strategy</td><td>OpenSearch (BM25/hybrid/vector)</td><td>Swap algorithm without touching callers</td></tr>
+    <tr><td>Abstract Interface</td><td>BaseDatabase, BaseRepository</td><td>DB backend swappable</td></tr>
+    <tr><td>Singleton</td><td>@lru_cache factories</td><td>Reuse expensive connections</td></tr>
+    <tr><td>Context Manager</td><td>DB sessions, Langfuse spans</td><td>Guaranteed resource cleanup</td></tr>
+    <tr><td>Builder</td><td>RAGPromptBuilder, QueryBuilder</td><td>Complex object construction</td></tr>
+    <tr><td>State Machine</td><td>LangGraph AgentState</td><td>Explicit workflow transitions</td></tr>
+    <tr><td>Observer</td><td>Langfuse tracing throughout</td><td>Non-intrusive monitoring</td></tr>
+    <tr><td>Graceful Degradation</td><td>Embeddings→BM25, Cache→skip</td><td>Partial failures don't crash</td></tr>
+    <tr><td>Evaluator-Optimizer</td><td>Critic node reflection loop</td><td>Quality improves iteratively</td></tr>
+    <tr><td>Memento</td><td>Research memory persistence</td><td>Remembers prior state</td></tr>
+    <tr><td>Composition</td><td>React components</td><td>UI building blocks</td></tr>
+    <tr><td>Controlled Components</td><td>React forms</td><td>React controls input value</td></tr>
+    <tr><td>Custom Hooks</td><td>useChat(), useLocalStorage()</td><td>Reusable stateful logic</td></tr>
+  </table>
+  <div style="margin-top:20px">
+    <div class="sec sec-teal">SOLID Principles</div>
+    <table class="ptbl">
+      <tr><th>Principle</th><th>Example</th></tr>
+      <tr><td>S — Single Responsibility</td><td>Each agent node handles ONE step</td></tr>
+      <tr><td>O — Open/Closed</td><td>New nodes via graph.add_node without modifying existing</td></tr>
+      <tr><td>L — Liskov Substitution</td><td>PostgreSQLDatabase fully substitutes BaseDatabase</td></tr>
+      <tr><td>I — Interface Segregation</td><td>Minimal abstract methods in base classes</td></tr>
+      <tr><td>D — Dependency Inversion</td><td>High-level modules depend on abstractions</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 12: FILE INVENTORY ====== -->
+<div class="slide s-dark slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">INVENTORY</div>
+  <h1 class="title">Complete File Counts</h1>
+  <p class="subtitle">~170+ files across all 3 tracks. Backend is the largest with 80+ source files.</p>
+  <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card">
+      <div class="stat-num hl">80+</div><div class="stat-lbl">Backend Files</div>
+      <div style="font-size:9px;color:#6B7F94;margin-top:6px">Settings (3) · DB (4) · Models (2) · Schemas (8+) · Repos (2) · Routers (6) · Services (32+) · Agents (20) · App (5) · Safety (2) · Monitor (1) · Infra (8) · Airflow (10) · Tests (25+)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num hl-b">45</div><div class="stat-lbl">Frontend Files</div>
+      <div style="font-size:9px;color:#6B7F94;margin-top:6px">Config (5) · API (7) · Common (4) · Layout (4) · Health (2) · Search (5) · Chat (4) · Agent (1) · Synthesis (3) · Memory (2) · Context (1) · Hooks (2) · Pages (6) · Utils (2) · Tests (9)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num hl-p">30+</div><div class="stat-lbl">Infrastructure Files</div>
+      <div style="font-size:9px;color:#6B7F94;margin-top:6px">K8s manifests · Helm chart · GitHub Actions · Terraform modules · Argo CD · Paper Classifier (9+ files) · Model cards</div>
+    </div>
+  </div>
+  <div style="margin-top:24px">
+    <div class="sec sec-teal">Backend API Endpoints (All Weeks)</div>
+    <table class="ptbl">
+      <tr><th>Endpoint</th><th>Method</th><th>Week</th><th>Purpose</th></tr>
+      <tr><td>/api/v1/health</td><td>GET</td><td>W1</td><td>DB, OpenSearch, Ollama status</td></tr>
+      <tr><td>/api/v1/hybrid-search</td><td>POST</td><td>W3</td><td>BM25 + hybrid search</td></tr>
+      <tr><td>/api/v1/ask</td><td>POST</td><td>W5</td><td>Standard RAG Q&A</td></tr>
+      <tr><td>/api/v1/stream</td><td>POST</td><td>W5</td><td>SSE streaming RAG</td></tr>
+      <tr><td>/api/v1/ask-agent</td><td>POST</td><td>W7</td><td>Agentic RAG with trace</td></tr>
+      <tr><td>/api/v1/synthesize</td><td>POST</td><td>W8</td><td>Cross-paper synthesis</td></tr>
+      <tr><td>/api/v1/memory</td><td>GET</td><td>W8</td><td>Research memory retrieval</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 13: PORTFOLIO ====== -->
+<div class="slide s-light slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-outline">OUTCOME</div>
+  <h1 class="title">Portfolio & Interview Map</h1>
+  <p class="subtitle">Two production-grade projects demonstrating end-to-end AI Integration Engineering. 85% of JD covered hands-on.</p>
+  <div class="grid g2">
+    <div class="card" style="border-left:4px solid #4ECDC4">
+      <div class="c-name">PaperLens (Full-Stack Agentic RAG)</div>
+      <div class="c-desc">11-node LangGraph agent • Hybrid BM25+vector search • React SPA • K8s + Helm • Terraform GKE • GitHub Actions CI/CD • Prometheus + Grafana • Argo CD GitOps • Ragas evaluation • Evidently drift • Presidio PII • 80+ backend files, 45 frontend files</div>
+    </div>
+    <div class="card" style="border-left:4px solid #3B82F6">
+      <div class="c-name">Paper Classifier (MLOps)</div>
+      <div class="c-desc">DistilBERT fine-tuned on abstracts • LoRA (0.45% params) • MLflow experiments + registry • W&B free tier • BentoML serving • ONNX export (1.5-3x speedup) • ML CI/CD pipeline with quality gates</div>
+    </div>
+  </div>
+  <div style="margin-top:20px;background:#F7F7F9;border:1px solid #E7E7EA;border-radius:8px;padding:14px 18px;font-size:12px;color:#2E2E38;font-style:italic">
+    <strong>Business framing:</strong> PaperLens reduces literature review time from 60+ hours to under 8 hours. Sub-100ms cached responses (150-400x speedup). 200M+ paper corpus. 13 Docker services.
+  </div>
+  <div style="margin-top:20px">
+    <div class="sec sec-light" style="color:#4ECDC4">Interview Preparation Map</div>
+    <table class="ftbl ftbl-light">
+      <tr><th>Question</th><th>Source</th><th>Key Points</th></tr>
+      <tr><td>"Describe your CI/CD"</td><td>PaperLens</td><td>lint → test → scan (Trivy+Snyk) → build → push → deploy</td></tr>
+      <tr><td>"Deploy to K8s?"</td><td>PaperLens</td><td>Helm chart → Argo CD GitOps on GKE</td></tr>
+      <tr><td>"MLOps experience?"</td><td>Paper Classifier</td><td>MLflow, model registry, BentoML, ONNX</td></tr>
+      <tr><td>"IaC?"</td><td>PaperLens</td><td>Terraform: VPC + GKE + AR, remote state in GCS</td></tr>
+      <tr><td>"Security?"</td><td>Both</td><td>Trivy, Snyk, SonarCloud, OPA, Presidio</td></tr>
+      <tr><td>"Monitoring?"</td><td>PaperLens</td><td>Prometheus, Grafana, Langfuse traces, Evidently</td></tr>
+      <tr><td>"RAG design?"</td><td>PaperLens</td><td>Hybrid search, agentic retrieval, critic loop</td></tr>
+      <tr><td>"React arch?"</td><td>PaperLens</td><td>SPA, hooks, Context, lazy loading, SSE</td></tr>
+      <tr><td>"Model optimization?"</td><td>Paper Classifier</td><td>ONNX, LoRA (0.45%), batch inference</td></tr>
+      <tr><td>"Data pipeline?"</td><td>PaperLens</td><td>Airflow: S2 → PDF → chunk → embed → index</td></tr>
+    </table>
+  </div>
+  <div style="margin-top:16px;font-size:11px;color:#747480">
+    <strong>Skills covered hands-on (85%):</strong> K8s, Helm, CI/CD, Terraform, DevSecOps, Prometheus/Grafana, MLflow, PyTorch, BentoML, ONNX, Argo CD, Ragas, Evidently, Presidio, Docker, FastAPI, RAG/LLM, LangGraph, Airflow, PostgreSQL, OpenSearch, Redis, React
+  </div>
+</div>
+</div>
+
+<!-- ====== SLIDE 14: DECISIONS ====== -->
+<div class="slide s-accent slide-scroll">
+<div class="slide-inner">
+  <div class="badge b-teal">DECISIONS</div>
+  <h1 class="title">Key Architecture Decisions</h1>
+  <p class="subtitle">PaperLens differs from the reference course in specific, deliberate ways.</p>
+  <table class="ptbl">
+    <tr><th>Decision</th><th>Course</th><th>PaperLens</th><th>Rationale</th></tr>
+    <tr><td>Data source</td><td>arXiv (CS/AI only)</td><td>Semantic Scholar (200M+, all fields)</td><td>Global access, richer metadata</td></tr>
+    <tr><td>DB driver</td><td>Sync (psycopg2)</td><td>Async (asyncpg)</td><td>Non-blocking for FastAPI</td></tr>
+    <tr><td>Config location</td><td>src/config.py</td><td>src/settings/config.py</td><td>Settings as a package</td></tr>
+    <tr><td>Environments</td><td>development/staging/production</td><td>DEV/UAT/PROD</td><td>User preference</td></tr>
+    <tr><td>Exception naming</td><td>OllamaConnectionError</td><td>OllamaConnectionException</td><td>Consistent style</td></tr>
+    <tr><td>Method naming</td><td>teardown()</td><td>close()</td><td>User preference</td></tr>
+    <tr><td>ORM style</td><td>Legacy Column()</td><td>Mapped[] + mapped_column()</td><td>Modern SQLAlchemy 2.0</td></tr>
+    <tr><td>Base class</td><td>declarative_base()</td><td>DeclarativeBase</td><td>Modern approach</td></tr>
+    <tr><td>Agent W8</td><td>—</td><td>+4 nodes (synthesis, contradiction, critic, memory)</td><td>Entirely new</td></tr>
+    <tr><td>Frontend</td><td>Gradio only</td><td>React 19 SPA + Gradio coexisting</td><td>Production UI + dev UI</td></tr>
+  </table>
+
+  <h2 style="color:#4ECDC4;font-size:16px;margin:24px 0 12px">Core Design Decisions</h2>
+  <table class="ptbl">
+    <tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr>
+    <tr><td>BM25 before vectors</td><td>Keyword search first (90% baseline)</td><td>Proven, then enhanced</td></tr>
+    <tr><td>Hybrid search with RRF</td><td>Reciprocal Rank Fusion</td><td>BM25 precision + semantic recall</td></tr>
+    <tr><td>Local LLM (Ollama)</td><td>No API keys needed</td><td>Private, cost-free</td></tr>
+    <tr><td>Factory pattern</td><td>Decouples construction from use</td><td>Enables testing</td></tr>
+    <tr><td>Pydantic Settings</td><td>Type-safe config + env-var loading</td><td>Nested prefixes</td></tr>
+    <tr><td>Abstract DB interface</td><td>Swap backends w/o business logic</td><td>Flexibility</td></tr>
+    <tr><td>LangGraph for agentic</td><td>State machine workflow</td><td>Explicit control flow</td></tr>
+    <tr><td>Graceful degradation</td><td>Embeddings fail → BM25. Cache down → skip.</td><td>Resilience</td></tr>
+    <tr><td>React (not TypeScript)</td><td>Lower barrier for React beginner</td><td>Learn fundamentals first</td></tr>
+    <tr><td>Vite + React SPA</td><td>No SSR needed</td><td>Simplicity</td></tr>
+    <tr><td>Tailwind CSS</td><td>Utility-first, no CSS files</td><td>Rapid prototyping</td></tr>
+    <tr><td>fetch (not axios)</td><td>Built-in, zero dependencies</td><td>Teaches fundamentals</td></tr>
+  </table>
+</div>
+</div>
+
+</div><!-- end deck -->
+
+<!-- NAVIGATION -->
+<div class="nav-bar">
+  <button class="nav-arrow" onclick="go(cur-1)">◀</button>
+  <div class="nav-div"></div>
+  <button class="nav-btn" onclick="go(0)">Overview</button>
+  <button class="nav-btn" onclick="go(1)">3 Tracks</button>
+  <button class="nav-btn" onclick="go(2)">Tech Stack</button>
+  <button class="nav-btn" onclick="go(3)">Architecture</button>
+  <button class="nav-btn" onclick="go(4)">Calendar</button>
+  <div class="nav-div"></div>
+  <span class="nav-lbl">Phases</span>
+  <button class="nav-btn" onclick="go(5)">P1</button>
+  <button class="nav-btn" onclick="go(6)">P2</button>
+  <button class="nav-btn" onclick="go(7)">P3</button>
+  <button class="nav-btn" onclick="go(8)">P4</button>
+  <div class="nav-div"></div>
+  <button class="nav-btn" onclick="go(9)">Agent</button>
+  <button class="nav-btn" onclick="go(10)">Testing</button>
+  <button class="nav-btn" onclick="go(11)">Patterns</button>
+  <button class="nav-btn" onclick="go(12)">Files</button>
+  <button class="nav-btn" onclick="go(13)">Portfolio</button>
+  <button class="nav-btn" onclick="go(14)">Decisions</button>
+  <div class="nav-div"></div>
+  <button class="nav-arrow" onclick="go(cur+1)">▶</button>
+</div>
+
+<script>
+const total=15;let cur=0;
+function go(i){if(i<0||i>=total)return;cur=i;document.getElementById('deck').style.transform='translateX(-'+cur*100+'vw)';document.querySelectorAll('.nav-btn').forEach((b,j)=>b.classList.toggle('active',j===cur))}
+document.addEventListener('keydown',e=>{const slide=document.querySelectorAll('.slide')[cur];const isScrollable=slide&&slide.classList.contains('slide-scroll');if(e.key==='ArrowRight'){e.preventDefault();go(cur+1)}if(e.key===' '&&!isScrollable){e.preventDefault();go(cur+1)}if(e.key==='ArrowLeft'){e.preventDefault();go(cur-1)}});
+go(0);
+
+// ═══════════════════════════════════════════════════════════════════
+//  SYNC: Read progress from Progress Tracker's localStorage
+//  Both files share the same key: 'paperlens-progress-v1'
+// ═══════════════════════════════════════════════════════════════════
+
+(function syncFromTracker() {
+  var STORAGE_KEY = 'paperlens-progress-v1';
+  var trackerState;
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    trackerState = raw ? JSON.parse(raw) : null;
+  } catch(e) { return; }
+  if (!trackerState) return;
+
+  // Known path mismatches: storybook text → tracker path
+  var REMAP = {};
+
+  // Per-phase stats: slideIndex → { done, total }
+  var phaseStats = {};
+  var slides = document.querySelectorAll('.slide');
+
+  document.querySelectorAll('table[data-sync]').forEach(function(table) {
+    var parts = table.dataset.sync.split(':');
+    var track = parts[0], weekId = parts[1];
+    var fileCol = parseInt(parts[2]), statusCol = parseInt(parts[3]);
+    var prefix = track + '::' + weekId + '::';
+
+    // Collect all tracker keys for this track+week
+    var weekPaths = {};
+    for (var k in trackerState) {
+      if (k.indexOf(prefix) === 0) {
+        weekPaths[k.substring(prefix.length)] = trackerState[k];
+      }
+    }
+
+    // Determine which slide this table is in (for phase progress)
+    var slide = table.closest('.slide');
+    var slideIdx = slide ? Array.from(slide.parentNode.children).indexOf(slide) : -1;
+    if (!phaseStats[slideIdx]) phaseStats[slideIdx] = { done: 0, total: 0 };
+
+    var rows = table.querySelectorAll('tr');
+    for (var i = 1; i < rows.length; i++) {
+      var cells = rows[i].querySelectorAll('td');
+      if (cells.length <= statusCol) continue;
+
+      // Skip grouped rows (e.g. "8-13"), meta rows, colspan rows
+      if (cells[fileCol].colSpan > 1) continue;
+      var filePath = cells[fileCol].textContent.trim();
+      if (!filePath || /^\d+-\d+/.test(filePath) || filePath.indexOf('test files') !== -1) continue;
+
+      // Handle ".env.example / .env" → both must be done
+      if (filePath === '.env.example / .env') {
+        var bothDone = weekPaths['.env.example'] && weekPaths['.env'];
+        cells[statusCol].className = bothDone ? 's-done' : 's-todo';
+        cells[statusCol].textContent = bothDone ? '\u2705' : '\u274C';
+        phaseStats[slideIdx].total++;
+        if (bothDone) phaseStats[slideIdx].done++;
+        continue;
+      }
+
+      // Apply known remaps
+      if (REMAP[filePath]) filePath = REMAP[filePath];
+
+      // Match: exact first, then suffix (handles shortened paths like opensearch/client.py)
+      var isDone = null;
+      if (filePath in weekPaths) {
+        isDone = weekPaths[filePath];
+      } else {
+        for (var kPath in weekPaths) {
+          if (kPath === filePath || kPath.endsWith('/' + filePath)) {
+            isDone = weekPaths[kPath];
+            break;
+          }
+        }
+      }
+
+      if (isDone !== null) {
+        cells[statusCol].className = isDone ? 's-done' : 's-todo';
+        cells[statusCol].textContent = isDone ? '\u2705' : '\u274C';
+        phaseStats[slideIdx].total++;
+        if (isDone) phaseStats[slideIdx].done++;
+      }
+    }
+  });
+
+  // Update per-phase progress bars (slides 5-8)
+  for (var idx in phaseStats) {
+    var stats = phaseStats[idx];
+    if (!stats.total) continue;
+    var pct = Math.round((stats.done / stats.total) * 100);
+    var phaseSlide = slides[parseInt(idx)];
+    if (!phaseSlide) continue;
+    var bar = phaseSlide.querySelector('.prog-bar');
+    if (bar) bar.style.width = pct + '%';
+    var flexWrap = bar ? bar.closest('[style*="display:flex"]') : null;
+    if (flexWrap) {
+      var pctEl = flexWrap.lastElementChild;
+      if (pctEl && pctEl.style.fontWeight) pctEl.textContent = pct + '%';
+    }
+  }
+
+  // Update slide 0 overall progress from ALL tracker data
+  // Count total and done from localStorage (tracker now stores ALL file keys)
+  var allDone = 0, allTotal = 0;
+  for (var key in trackerState) {
+    if (key.indexOf('::') !== -1) { // Only count track::week::path keys
+      allTotal++;
+      if (trackerState[key]) allDone++;
+    }
+  }
+  if (slides[0] && allTotal > 0) {
+    var overallPct = Math.round((allDone / allTotal) * 100);
+    var statNums = slides[0].querySelectorAll('.stat-num');
+    // statNums[4] = "Files Done", statNums[5] = "Overall Progress"
+    if (statNums[4]) statNums[4].textContent = allDone;
+    if (statNums[5]) statNums[5].textContent = overallPct + '%';
+    var overallBar = slides[0].querySelector('.prog-bar');
+    if (overallBar) overallBar.style.width = overallPct + '%';
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PaperLens — Interactive Progress Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    height: 100%;
+    background: #0F1923;
+    color: #FFFFFF;
+    overflow-y: auto;
+  }
+
+  /* ─── LAYOUT ─── */
+  .app { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* ─── HEADER ─── */
+  .header { margin-bottom: 32px; }
+  .header-badge {
+    display: inline-block;
+    background: #4ECDC4;
+    color: #0F1923;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .header h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .header p { color: #A0B4C8; font-size: 14px; line-height: 1.5; }
+  .header .hl { color: #4ECDC4; }
+  .header .hl-blue { color: #3B82F6; }
+  .header .hl-purple { color: #8B5CF6; }
+
+  /* ─── OVERALL DASHBOARD ─── */
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .dash-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .dash-number { font-size: 28px; font-weight: 700; margin-bottom: 2px; }
+  .dash-label { font-size: 10px; color: #A0B4C8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dash-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .dash-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .fill-teal { background: #4ECDC4; }
+  .fill-blue { background: #3B82F6; }
+  .fill-purple { background: #8B5CF6; }
+  .fill-orange { background: #F59E0B; }
+  .fill-white { background: #FFFFFF; }
+  .color-teal { color: #4ECDC4; }
+  .color-blue { color: #3B82F6; }
+  .color-purple { color: #8B5CF6; }
+  .color-orange { color: #F59E0B; }
+
+  /* ─── TABS ─── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid rgba(255,255,255,0.06);
+    padding-bottom: 0;
+  }
+
+  .tab-btn {
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: #747480;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s ease;
+  }
+
+  .tab-btn:hover { color: #C4C4CD; }
+  .tab-btn.active { color: #4ECDC4; border-bottom-color: #4ECDC4; }
+  .tab-btn[data-track="frontend"].active { color: #3B82F6; border-bottom-color: #3B82F6; }
+  .tab-btn[data-track="infra"].active { color: #8B5CF6; border-bottom-color: #8B5CF6; }
+
+  .tab-count {
+    display: inline-block;
+    background: rgba(255,255,255,0.08);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+  }
+
+  .track-panel { display: none; }
+  .track-panel.active { display: block; }
+
+  /* ─── WEEK SECTION ─── */
+  .week-section {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .week-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+  }
+
+  .week-header:hover { background: rgba(255,255,255,0.03); }
+
+  .week-chevron {
+    font-size: 12px;
+    color: #747480;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .week-section.open .week-chevron { transform: rotate(90deg); }
+
+  .week-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .badge-teal { background: #4ECDC4; color: #0F1923; }
+  .badge-blue { background: #3B82F6; color: #FFFFFF; }
+  .badge-purple { background: #8B5CF6; color: #FFFFFF; }
+
+  .week-title { font-size: 14px; font-weight: 600; flex: 1; }
+  .week-counter { font-size: 12px; color: #A0B4C8; font-weight: 600; white-space: nowrap; }
+
+  .week-progress {
+    width: 120px;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .week-progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+
+  .week-pct { font-size: 11px; font-weight: 700; width: 36px; text-align: right; flex-shrink: 0; }
+
+  .week-body { display: none; padding: 0 18px 14px; }
+  .week-section.open .week-body { display: block; }
+
+  /* ─── FILE ITEMS ─── */
+  .file-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #747480;
+    margin: 12px 0 6px;
+    padding-left: 28px;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .file-item:last-child { border-bottom: none; }
+
+  .file-cb {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    accent-color: #4ECDC4;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .file-cb-blue { accent-color: #3B82F6; }
+  .file-cb-purple { accent-color: #8B5CF6; }
+
+  .file-path {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    color: #C4C4CD;
+    min-width: 0;
+    word-break: break-all;
+  }
+
+  .file-desc {
+    font-size: 11px;
+    color: #747480;
+    margin-left: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-left: 12px;
+  }
+
+  .file-item.checked .file-path { color: #4ECDC4; text-decoration: line-through; text-decoration-color: rgba(78,205,196,0.3); }
+  .file-item.checked .file-desc { color: #4ECDC4; }
+
+  /* ─── TOOLBAR ─── */
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+
+  .toolbar-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: #C4C4CD;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .toolbar-btn:hover { border-color: #4ECDC4; color: #4ECDC4; }
+  .toolbar-btn.danger:hover { border-color: #EF4444; color: #EF4444; }
+  .toolbar-spacer { flex: 1; }
+  .toolbar-info { font-size: 11px; color: #747480; }
+
+  /* ─── LEGEND ─── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 12px 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 11px;
+    color: #A0B4C8;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    text-align: center;
+    padding: 24px 0;
+    color: #747480;
+    font-size: 11px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin-top: 32px;
+  }
+
+  .footer kbd {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: 'Cascadia Code', monospace;
+    font-size: 10px;
+    color: #C4C4CD;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    .dashboard { grid-template-columns: repeat(3, 1fr); }
+    .week-progress { display: none; }
+    .file-desc { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">INTERACTIVE TRACKER</div>
+    <h1>PaperLens <span class="hl">Progress</span></h1>
+    <p>
+      Click checkboxes to track file completion. Progress is saved to <span class="hl">localStorage</span> — survives page refreshes.
+      <br>
+      <span class="hl">Backend</span> (8 weeks) · <span class="hl-blue">Frontend</span> (6 weeks) · <span class="hl-purple">Infrastructure</span> (4 phases)
+    </p>
+  </div>
+
+  <!-- OVERALL DASHBOARD -->
+  <div class="dashboard" id="dashboard"></div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <button class="toolbar-btn" onclick="expandAll()">Expand All</button>
+    <button class="toolbar-btn" onclick="collapseAll()">Collapse All</button>
+    <div class="toolbar-spacer"></div>
+    <span class="toolbar-info" id="lastSaved"></span>
+    <button class="toolbar-btn" onclick="exportProgress()">Export JSON</button>
+    <button class="toolbar-btn" onclick="importProgress()">Import JSON</button>
+    <button class="toolbar-btn danger" onclick="resetProgress()">Reset All</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" data-track="backend" onclick="switchTrack('backend')">
+      Backend <span class="tab-count" id="tab-count-backend"></span>
+    </button>
+    <button class="tab-btn" data-track="frontend" onclick="switchTrack('frontend')">
+      Frontend <span class="tab-count" id="tab-count-frontend"></span>
+    </button>
+    <button class="tab-btn" data-track="infra" onclick="switchTrack('infra')">
+      Infrastructure <span class="tab-count" id="tab-count-infra"></span>
+    </button>
+  </div>
+
+  <!-- TRACK PANELS (generated by JS) -->
+  <div id="track-backend" class="track-panel active"></div>
+  <div id="track-frontend" class="track-panel"></div>
+  <div id="track-infra" class="track-panel"></div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    PaperLens Progress Tracker · Data stored in browser localStorage · Press <kbd>E</kbd> to expand all · <kbd>C</kbd> to collapse all
+  </div>
+</div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  DATA: Every file for every week, organized by track           ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+const DATA = {
+  backend: [
+    {
+      id: 'bw1', week: '1', title: 'Infrastructure & Project Skeleton',
+      groups: [
+        { label: 'Config & Settings', files: [
+          { path: 'pyproject.toml', desc: 'Project config & dependencies', done: true },
+          { path: '.env.example', desc: 'Environment template', done: true },
+          { path: '.env', desc: 'Real env values (gitignored)', done: true },
+          { path: 'src/settings/config.py', desc: 'Centralized settings', done: true },
+          { path: 'src/settings/logging.py', desc: 'Logging setup', done: true },
+          { path: 'src/exceptions.py', desc: 'Custom exception hierarchy', done: true },
+        ]},
+        { label: 'Database Layer', files: [
+          { path: 'src/db/interfaces/base.py', desc: 'Abstract DB interface', done: true },
+          { path: 'src/db/interfaces/postgresql.py', desc: 'PostgreSQL implementation', done: true },
+          { path: 'src/db/interfaces/__init__.py', desc: 'DB exports', done: true },
+          { path: 'src/db/factory.py', desc: 'Database factory', done: true },
+        ]},
+        { label: 'Models & Schemas', files: [
+          { path: 'src/models/paper.py', desc: 'Paper ORM model', done: true },
+          { path: 'src/models/__init__.py', desc: 'Model exports', done: true },
+          { path: 'src/schemas/semantic_scholar/paper.py', desc: 'S2 paper schemas', done: true },
+          { path: 'src/schemas/api/health.py', desc: 'Health schemas', done: true },
+        ]},
+        { label: 'Repository', files: [
+          { path: 'src/repositories/paper.py', desc: 'Paper repository (async CRUD)', done: true },
+          { path: 'src/repositories/__init__.py', desc: 'Repository exports', done: true },
+        ]},
+        { label: 'API Layer', files: [
+          { path: 'src/middlewares.py', desc: 'Request/response logging', done: true },
+          { path: 'src/dependencies.py', desc: 'DI definitions' },
+          { path: 'src/routers/health.py', desc: 'Health endpoint' },
+          { path: 'src/routers/__init__.py', desc: 'Router exports' },
+          { path: 'src/main.py', desc: 'FastAPI application' },
+        ]},
+        { label: 'Infrastructure', files: [
+          { path: 'Dockerfile', desc: 'API container' },
+          { path: 'compose.yml', desc: 'Docker Compose (Week 1 services)' },
+          { path: 'Makefile', desc: 'Dev commands' },
+        ]},
+        { label: 'Airflow', files: [
+          { path: 'airflow/Dockerfile', desc: 'Airflow container' },
+          { path: 'airflow/entrypoint.sh', desc: 'Airflow startup script' },
+          { path: 'airflow/requirements-airflow.txt', desc: 'Airflow dependencies' },
+          { path: 'airflow/dags/hello_world_dag.py', desc: 'Test DAG' },
+        ]},
+        { label: 'Tests', files: [
+          { path: 'tests/conftest.py', desc: 'Test configuration' },
+          { path: 'tests/unit/test_config.py', desc: 'Config tests' },
+          { path: 'tests/api/conftest.py', desc: 'API test fixtures' },
+          { path: 'tests/api/routers/test_health.py', desc: 'Health endpoint tests' },
+          { path: '.env.test', desc: 'Test environment config' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw2', week: '2', title: 'Data Ingestion Pipeline',
+      groups: [
+        { label: 'PDF Parser', files: [
+          { path: 'src/schemas/pdf_parser/models.py', desc: 'PDF parser schemas' },
+          { path: 'src/schemas/pdf_parser/__init__.py', desc: 'PDF parser exports' },
+          { path: 'src/services/pdf_parser/docling.py', desc: 'Docling wrapper' },
+          { path: 'src/services/pdf_parser/parser.py', desc: 'PDF parser service' },
+          { path: 'src/services/pdf_parser/factory.py', desc: 'PDF parser factory' },
+          { path: 'src/services/pdf_parser/__init__.py', desc: 'Service exports' },
+        ]},
+        { label: 'Semantic Scholar', files: [
+          { path: 'src/services/semantic_scholar/client.py', desc: 'S2 API client' },
+          { path: 'src/services/semantic_scholar/factory.py', desc: 'S2 client factory' },
+          { path: 'src/services/semantic_scholar/__init__.py', desc: 'S2 service exports' },
+          { path: 'src/services/metadata_fetcher.py', desc: 'Pipeline orchestrator' },
+        ]},
+        { label: 'Airflow DAG', files: [
+          { path: 'airflow/dags/paper_ingestion/common.py', desc: 'Shared service init' },
+          { path: 'airflow/dags/paper_ingestion/setup.py', desc: 'Environment setup task' },
+          { path: 'airflow/dags/paper_ingestion/fetching.py', desc: 'Paper fetching task' },
+          { path: 'airflow/dags/paper_ingestion/indexing.py', desc: 'Indexing task (stub)' },
+          { path: 'airflow/dags/paper_ingestion/reporting.py', desc: 'Report generation task' },
+          { path: 'airflow/dags/paper_ingestion_dag.py', desc: 'Main DAG definition' },
+        ]},
+        { label: 'Tests', files: [
+          { path: 'tests/unit/services/test_s2_client.py', desc: 'S2 client tests' },
+          { path: 'tests/unit/services/test_pdf_parser.py', desc: 'PDF parser tests' },
+          { path: 'tests/unit/services/test_metadata_fetcher.py', desc: 'Metadata fetcher tests' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw3', week: '3', title: 'BM25 Search (OpenSearch)',
+      groups: [
+        { label: 'OpenSearch Service', files: [
+          { path: 'src/services/opensearch/index_config_hybrid.py', desc: 'Index mapping config' },
+          { path: 'src/services/opensearch/query_builder.py', desc: 'Query DSL builder' },
+          { path: 'src/services/opensearch/client.py', desc: 'OpenSearch client' },
+          { path: 'src/services/opensearch/factory.py', desc: 'Client factory' },
+          { path: 'src/services/opensearch/__init__.py', desc: 'OpenSearch exports' },
+        ]},
+        { label: 'API Layer', files: [
+          { path: 'src/schemas/api/search.py', desc: 'Search request/response' },
+          { path: 'src/routers/hybrid_search.py', desc: 'Search endpoint' },
+        ]},
+        { label: 'Tests', files: [
+          { path: 'tests/unit/services/test_opensearch_query_builder.py', desc: 'Query builder tests' },
+          { path: 'tests/unit/schemas/test_search.py', desc: 'Schema validation tests' },
+          { path: 'tests/api/routers/test_hybrid_search.py', desc: 'Search endpoint tests' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw4', week: '4', title: 'Hybrid Search (Chunking + Embeddings + RRF)',
+      groups: [
+        { label: 'Indexing', files: [
+          { path: 'src/schemas/indexing/models.py', desc: 'Chunk schemas' },
+          { path: 'src/schemas/indexing/__init__.py', desc: 'Indexing exports' },
+          { path: 'src/services/indexing/text_chunker.py', desc: 'Text chunker' },
+          { path: 'src/services/indexing/hybrid_indexer.py', desc: 'Hybrid indexing service' },
+          { path: 'src/services/indexing/factory.py', desc: 'Indexing factory' },
+          { path: 'src/services/indexing/__init__.py', desc: 'Indexing service exports' },
+        ]},
+        { label: 'Embeddings', files: [
+          { path: 'src/schemas/embeddings/jina.py', desc: 'Embedding schemas' },
+          { path: 'src/schemas/embeddings/__init__.py', desc: 'Embeddings exports' },
+          { path: 'src/services/embeddings/jina_client.py', desc: 'Jina embeddings client' },
+          { path: 'src/services/embeddings/factory.py', desc: 'Embeddings factory' },
+          { path: 'src/services/embeddings/__init__.py', desc: 'Embeddings service exports' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw5', week: '5', title: 'Complete RAG System',
+      groups: [
+        { label: 'Ollama LLM', files: [
+          { path: 'src/services/ollama/prompts/rag_system.txt', desc: 'System prompt template' },
+          { path: 'src/services/ollama/prompts/__init__.py', desc: 'Prompts exports' },
+          { path: 'src/services/ollama/prompts.py', desc: 'Prompt builder & parser' },
+          { path: 'src/services/ollama/client.py', desc: 'Ollama LLM client' },
+          { path: 'src/services/ollama/factory.py', desc: 'Ollama factory' },
+          { path: 'src/services/ollama/__init__.py', desc: 'Ollama exports' },
+        ]},
+        { label: 'API & UI', files: [
+          { path: 'src/schemas/api/ask.py', desc: 'Ask request/response' },
+          { path: 'src/routers/ask.py', desc: 'RAG endpoints (/ask + /stream)' },
+          { path: 'src/gradio_app.py', desc: 'Gradio web interface' },
+          { path: 'gradio_launcher.py', desc: 'Gradio launcher' },
+        ]},
+        { label: 'Tests', files: [
+          { path: 'tests/api/routers/test_ask.py', desc: 'RAG endpoint tests' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw6', week: '6', title: 'Observability & Caching',
+      groups: [
+        { label: 'Langfuse', files: [
+          { path: 'src/services/langfuse/client.py', desc: 'Langfuse tracer wrapper' },
+          { path: 'src/services/langfuse/tracer.py', desc: 'RAG-specific tracing' },
+          { path: 'src/services/langfuse/factory.py', desc: 'Langfuse factory' },
+          { path: 'src/services/langfuse/__init__.py', desc: 'Langfuse exports' },
+        ]},
+        { label: 'Redis Cache', files: [
+          { path: 'src/services/cache/client.py', desc: 'Redis cache client' },
+          { path: 'src/services/cache/factory.py', desc: 'Cache factory' },
+          { path: 'src/services/cache/__init__.py', desc: 'Cache exports' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw7', week: '7', title: 'Agentic RAG (LangGraph) & Telegram',
+      groups: [
+        { label: 'Agent Core', files: [
+          { path: 'src/services/agents/config.py', desc: 'Agent configuration' },
+          { path: 'src/services/agents/models.py', desc: 'Pydantic models' },
+          { path: 'src/services/agents/state.py', desc: 'LangGraph state' },
+          { path: 'src/services/agents/context.py', desc: 'Runtime context' },
+          { path: 'src/services/agents/prompts.py', desc: 'LLM prompts' },
+          { path: 'src/services/agents/tools.py', desc: 'Retriever tool' },
+        ]},
+        { label: 'Agent Nodes', files: [
+          { path: 'src/services/agents/nodes/utils.py', desc: 'Node utilities' },
+          { path: 'src/services/agents/nodes/guardrail_node.py', desc: 'Guardrail node' },
+          { path: 'src/services/agents/nodes/out_of_scope_node.py', desc: 'Out-of-scope node' },
+          { path: 'src/services/agents/nodes/retrieve_node.py', desc: 'Retrieve node' },
+          { path: 'src/services/agents/nodes/grade_documents_node.py', desc: 'Grade documents node' },
+          { path: 'src/services/agents/nodes/rewrite_query_node.py', desc: 'Rewrite query node' },
+          { path: 'src/services/agents/nodes/generate_answer_node.py', desc: 'Generate answer node' },
+          { path: 'src/services/agents/nodes/__init__.py', desc: 'Nodes exports' },
+        ]},
+        { label: 'Agent Service', files: [
+          { path: 'src/services/agents/agentic_rag.py', desc: 'Main agent service' },
+          { path: 'src/services/agents/factory.py', desc: 'Agent factory' },
+          { path: 'src/services/agents/__init__.py', desc: 'Agents exports' },
+          { path: 'src/routers/agentic_ask.py', desc: 'Agentic endpoint' },
+        ]},
+        { label: 'Telegram', files: [
+          { path: 'src/services/telegram/bot.py', desc: 'Telegram bot' },
+          { path: 'src/services/telegram/factory.py', desc: 'Telegram factory' },
+          { path: 'src/services/telegram/__init__.py', desc: 'Telegram exports' },
+        ]},
+        { label: 'Tests', files: [
+          { path: 'tests/unit/services/agents/test_agentic_rag.py', desc: 'Agent service tests' },
+          { path: 'tests/unit/services/agents/test_models.py', desc: 'Model tests' },
+          { path: 'tests/unit/services/agents/test_nodes.py', desc: 'Node tests' },
+          { path: 'tests/unit/services/agents/test_tools.py', desc: 'Tool tests' },
+          { path: 'tests/api/routers/test_agentic_ask.py', desc: 'Endpoint tests' },
+          { path: 'tests/unit/services/test_telegram.py', desc: 'Telegram tests' },
+        ]},
+      ]
+    },
+    {
+      id: 'bw8', week: '8', title: 'PaperLens Extensions',
+      groups: [
+        { label: 'Memory Service', files: [
+          { path: 'src/services/memory/client.py', desc: 'Research memory store (Redis)' },
+          { path: 'src/services/memory/factory.py', desc: 'Memory client factory' },
+          { path: 'src/services/memory/__init__.py', desc: 'Memory exports' },
+        ]},
+        { label: 'Extension Nodes', files: [
+          { path: 'src/services/agents/nodes/synthesis_node.py', desc: 'Cross-paper synthesis' },
+          { path: 'src/services/agents/nodes/contradiction_node.py', desc: 'Contradiction detection' },
+          { path: 'src/services/agents/nodes/critic_node.py', desc: 'Quality critic' },
+          { path: 'src/services/agents/nodes/memory_node.py', desc: 'Memory integration' },
+        ]},
+        { label: 'Updated Files', files: [
+          { path: 'src/services/agents/prompts.py [W8]', desc: 'Add synthesis/contradiction/critic prompts' },
+          { path: 'src/services/agents/models.py [W8]', desc: 'Add SynthesisResult, Contradiction, etc.' },
+          { path: 'src/services/agents/state.py [W8]', desc: 'Add Week 8 state fields' },
+          { path: 'src/services/agents/context.py [W8]', desc: 'Add memory_client' },
+          { path: 'src/services/agents/agentic_rag.py [W8]', desc: 'Extend graph (11 nodes)' },
+          { path: 'src/schemas/api/ask.py [W8]', desc: 'Add SynthesisAskRequest/Response' },
+          { path: 'src/gradio_app.py [W8]', desc: 'Add synthesis tab' },
+        ]},
+        { label: 'API', files: [
+          { path: 'src/routers/synthesis.py', desc: 'Synthesis endpoint' },
+        ]},
+        { label: 'Tests & Evaluation', files: [
+          { path: 'tests/unit/services/agents/test_synthesis_node.py', desc: 'Synthesis tests' },
+          { path: 'tests/unit/services/agents/test_contradiction_node.py', desc: 'Contradiction tests' },
+          { path: 'tests/unit/services/agents/test_critic_node.py', desc: 'Critic tests' },
+          { path: 'tests/unit/services/agents/test_memory_node.py', desc: 'Memory tests' },
+          { path: 'tests/unit/services/test_memory_client.py', desc: 'Memory client tests' },
+          { path: 'tests/api/routers/test_synthesis.py', desc: 'Synthesis endpoint tests' },
+          { path: 'tests/evaluation/test_synthesis_quality.py', desc: 'Quality evaluation' },
+          { path: 'tests/evaluation/ragas_eval.py', desc: 'RAGAS integration' },
+        ]},
+      ]
+    },
+  ],
+
+  frontend: [
+    {
+      id: 'fw1', week: '1', title: 'React Foundations & Project Shell',
+      groups: [
+        { label: 'Project Setup', files: [
+          { path: 'frontend/package.json', desc: 'Dependencies & scripts' },
+          { path: 'frontend/vite.config.js', desc: 'Vite config with Tailwind' },
+          { path: 'frontend/.gitignore', desc: 'Exclude node_modules, dist' },
+          { path: 'frontend/index.html', desc: 'HTML entry point' },
+          { path: 'frontend/src/styles/index.css', desc: 'Tailwind import' },
+          { path: 'frontend/.env.example', desc: 'Frontend env template' },
+          { path: 'frontend/src/utils/constants.js', desc: 'API_BASE_URL, APP_NAME' },
+        ]},
+        { label: 'Common Components', files: [
+          { path: 'frontend/src/components/common/LoadingSpinner.jsx', desc: 'Loading indicator' },
+          { path: 'frontend/src/components/common/ErrorMessage.jsx', desc: 'Error display' },
+          { path: 'frontend/src/components/common/Badge.jsx', desc: 'Status badge' },
+        ]},
+        { label: 'Layout', files: [
+          { path: 'frontend/src/components/layout/Navbar.jsx', desc: 'Top navigation' },
+          { path: 'frontend/src/components/layout/Sidebar.jsx', desc: 'Left sidebar' },
+          { path: 'frontend/src/components/layout/StatusBar.jsx', desc: 'Bottom status bar' },
+          { path: 'frontend/src/components/layout/Layout.jsx', desc: 'Shell composition' },
+        ]},
+        { label: 'Pages & Entry', files: [
+          { path: 'frontend/src/pages/HomePage.jsx', desc: 'Landing page' },
+          { path: 'frontend/src/pages/HealthPage.jsx', desc: 'Health page (static)' },
+          { path: 'frontend/src/App.jsx', desc: 'Root component' },
+          { path: 'frontend/src/main.jsx', desc: 'React entry point' },
+        ]},
+      ]
+    },
+    {
+      id: 'fw2', week: '2', title: 'API Integration & Health Dashboard',
+      groups: [
+        { label: 'API Client', files: [
+          { path: 'frontend/src/api/client.js', desc: 'Base fetch wrapper' },
+          { path: 'frontend/src/api/health.js', desc: 'fetchHealth()' },
+        ]},
+        { label: 'Health Components', files: [
+          { path: 'frontend/src/components/health/ServiceStatusCard.jsx', desc: 'Single service card' },
+          { path: 'frontend/src/components/health/HealthDashboard.jsx', desc: 'Health dashboard' },
+        ]},
+        { label: 'Updates', files: [
+          { path: 'frontend/src/pages/HealthPage.jsx [W2]', desc: 'Rewrite: live data' },
+          { path: 'frontend/src/components/layout/StatusBar.jsx [W2]', desc: 'Update: live status' },
+          { path: 'frontend/src/App.jsx [W2]', desc: 'Update: lift health state' },
+          { path: 'frontend/vite.config.js [W2]', desc: 'Update: add dev proxy' },
+        ]},
+      ]
+    },
+    {
+      id: 'fw3', week: '3', title: 'Search Page',
+      groups: [
+        { label: 'Search API', files: [
+          { path: 'frontend/src/api/search.js', desc: 'searchPapers(), hybridSearchPapers()' },
+        ]},
+        { label: 'Search Components', files: [
+          { path: 'frontend/src/components/search/SearchBar.jsx', desc: 'Controlled search input' },
+          { path: 'frontend/src/components/search/FilterPanel.jsx', desc: 'Search filters' },
+          { path: 'frontend/src/components/search/PaperCard.jsx', desc: 'Single paper result' },
+          { path: 'frontend/src/components/search/SearchResults.jsx', desc: 'Results list' },
+          { path: 'frontend/src/components/search/Pagination.jsx', desc: 'Page navigation' },
+        ]},
+        { label: 'Pages & Utils', files: [
+          { path: 'frontend/src/pages/SearchPage.jsx', desc: 'Search orchestrator' },
+          { path: 'frontend/src/utils/formatters.js', desc: 'Author/date formatters' },
+        ]},
+      ]
+    },
+    {
+      id: 'fw4', week: '4', title: 'Chat Interface + SSE Streaming',
+      groups: [
+        { label: 'Chat API & Hook', files: [
+          { path: 'frontend/src/api/chat.js', desc: 'askQuestion(), streamQuestion()' },
+          { path: 'frontend/src/hooks/useChat.js', desc: 'useReducer-based chat state' },
+        ]},
+        { label: 'Chat Components', files: [
+          { path: 'frontend/src/components/chat/ChatMessage.jsx', desc: 'User/assistant message' },
+          { path: 'frontend/src/components/chat/SourceCard.jsx', desc: 'Source citation' },
+          { path: 'frontend/src/components/chat/ChatInput.jsx', desc: 'Textarea with Enter/Shift+Enter' },
+          { path: 'frontend/src/components/chat/ChatPanel.jsx', desc: 'Chat container' },
+        ]},
+        { label: 'Pages', files: [
+          { path: 'frontend/src/pages/ChatPage.jsx', desc: 'Chat page orchestrator' },
+        ]},
+      ]
+    },
+    {
+      id: 'fw5', week: '5', title: 'Routing, Agent Mode & Synthesis',
+      groups: [
+        { label: 'Context & Hooks', files: [
+          { path: 'frontend/src/context/SettingsContext.jsx', desc: 'Global settings Context' },
+          { path: 'frontend/src/hooks/useLocalStorage.js', desc: 'Persist settings' },
+        ]},
+        { label: 'API', files: [
+          { path: 'frontend/src/api/agent.js', desc: 'askAgent()' },
+          { path: 'frontend/src/api/synthesis.js', desc: 'synthesizePapers()' },
+          { path: 'frontend/src/api/memory.js', desc: 'fetchMemories()' },
+        ]},
+        { label: 'Agent & Synthesis Components', files: [
+          { path: 'frontend/src/components/agent/ReasoningTrace.jsx', desc: 'Agent trace timeline' },
+          { path: 'frontend/src/components/synthesis/SynthesisForm.jsx', desc: 'Multi-query input' },
+          { path: 'frontend/src/components/synthesis/ContradictionCard.jsx', desc: 'Contradiction display' },
+          { path: 'frontend/src/components/synthesis/FindingsList.jsx', desc: 'Key findings list' },
+        ]},
+        { label: 'Memory', files: [
+          { path: 'frontend/src/components/memory/MemoryCard.jsx', desc: 'Memory item card' },
+          { path: 'frontend/src/components/memory/MemorySidebar.jsx', desc: 'Memory panel' },
+        ]},
+        { label: 'Pages & Updates', files: [
+          { path: 'frontend/src/pages/SynthesisPage.jsx', desc: 'Synthesis orchestrator' },
+          { path: 'frontend/src/pages/NotFoundPage.jsx', desc: '404 page' },
+          { path: 'frontend/src/App.jsx [W5]', desc: 'Rewrite: React Router + Context' },
+          { path: 'frontend/src/components/layout/Layout.jsx [W5]', desc: 'Update: Outlet + Context' },
+          { path: 'frontend/src/components/layout/Navbar.jsx [W5]', desc: 'Update: Link + useLocation' },
+        ]},
+      ]
+    },
+    {
+      id: 'fw6', week: '6', title: 'Production Polish & Deploy',
+      groups: [
+        { label: 'Theme & Error Handling', files: [
+          { path: 'frontend/src/components/common/ErrorBoundary.jsx', desc: 'Error boundary' },
+          { path: 'frontend/src/context/ThemeContext.jsx', desc: 'Dark mode Context' },
+        ]},
+        { label: 'Updates', files: [
+          { path: 'frontend/src/App.jsx [W6]', desc: 'Dark/light theme + React.lazy' },
+          { path: 'frontend/src/components/layout/Navbar.jsx [W6]', desc: 'Theme toggle' },
+          { path: 'frontend/src/components/layout/Layout.jsx [W6]', desc: 'Responsive mobile' },
+        ]},
+        { label: 'Tests', files: [
+          { path: 'frontend/src/tests/setup.js', desc: 'Vitest + RTL setup' },
+          { path: 'frontend/tests/components/LoadingSpinner.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/components/Badge.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/components/PaperCard.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/components/SearchBar.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/components/ChatMessage.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/components/ChatInput.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/components/HealthDashboard.test.jsx', desc: 'Component test' },
+          { path: 'frontend/tests/hooks/useChat.test.js', desc: 'Hook test' },
+          { path: 'frontend/tests/hooks/useLocalStorage.test.js', desc: 'Hook test' },
+        ]},
+        { label: 'Deployment', files: [
+          { path: 'frontend/Dockerfile', desc: 'Multi-stage build (Node → Nginx)' },
+          { path: 'frontend/nginx.conf', desc: 'SPA routing + API proxy' },
+          { path: 'frontend/.dockerignore', desc: 'Exclude node_modules, dist' },
+        ]},
+      ]
+    },
+  ],
+
+  infra: [
+    {
+      id: 'ip1', week: 'P1', title: 'Phase 1: Foundations (K8s + CI/CD + Helm)',
+      groups: [
+        { label: 'CW 1 — K8s Basics', files: [
+          { path: 'Minikube setup & kubectl proficiency', desc: 'Local cluster' },
+          { path: 'Pods, Deployments, Services concepts', desc: 'Core K8s objects' },
+          { path: 'ConfigMaps & Secrets management', desc: 'Config management' },
+        ]},
+        { label: 'CW 2 — Deploy on Minikube', files: [
+          { path: 'PaperLens namespace & Postgres PVC', desc: 'Namespace setup' },
+          { path: 'API deployment with probes', desc: 'Health probes' },
+          { path: 'Rolling updates strategy', desc: 'Deployment strategy' },
+        ]},
+        { label: 'CW 3 — GitHub Actions CI', files: [
+          { path: 'Lint → Test → Build → Push pipeline', desc: 'CI pipeline' },
+          { path: 'GHCR container registry', desc: 'Image registry' },
+          { path: 'Service containers for tests', desc: 'Test infra' },
+        ]},
+        { label: 'CW 4 — Helm Charts', files: [
+          { path: 'Chart creation & values.yaml', desc: 'Helm basics' },
+          { path: 'Templates & environment overrides', desc: 'Templating' },
+          { path: 'Install / upgrade / rollback workflow', desc: 'Release management' },
+        ]},
+      ]
+    },
+    {
+      id: 'ip2', week: 'P2', title: 'Phase 2: MLOps (Paper Classifier)',
+      groups: [
+        { label: 'CW 5 — MLflow Intro', files: [
+          { path: 'MLflow server setup', desc: 'Experiment tracking' },
+          { path: 'TF-IDF baseline model', desc: 'Baseline' },
+          { path: 'Model registry & hyperparameter search', desc: 'Model management' },
+        ]},
+        { label: 'CW 6 — Fine-tuning', files: [
+          { path: 'DistilBERT on paper abstracts', desc: 'Transfer learning' },
+          { path: 'LoRA (0.45% params) training', desc: 'PEFT' },
+          { path: 'Compare runs (MLflow vs W&B)', desc: 'Experiment comparison' },
+        ]},
+        { label: 'CW 7 — ONNX + BentoML', files: [
+          { path: 'ONNX export & speed benchmark', desc: 'Model optimization' },
+          { path: 'BentoML service & containerize', desc: 'Model serving' },
+        ]},
+        { label: 'CW 8 — Deploy + Compare', files: [
+          { path: 'BentoML on Minikube', desc: 'K8s deployment' },
+          { path: 'MLflow vs W&B documentation', desc: 'Tool comparison' },
+        ]},
+      ]
+    },
+    {
+      id: 'ip3', week: 'P3', title: 'Phase 3: Infra & Security',
+      groups: [
+        { label: 'CW 9 — Terraform Basics', files: [
+          { path: 'Docker provider practice', desc: 'IaC intro' },
+          { path: 'GCP Free Trial + VPC module', desc: 'Cloud setup' },
+          { path: 'terraform plan/apply workflow', desc: 'IaC workflow' },
+        ]},
+        { label: 'CW 10 — GKE + Artifact Registry', files: [
+          { path: 'GKE Autopilot module', desc: 'Managed K8s' },
+          { path: 'Artifact Registry push + deploy', desc: 'Container registry' },
+          { path: 'Remote state in GCS', desc: 'State management' },
+        ]},
+        { label: 'CW 11 — Monitoring + Security', files: [
+          { path: 'src/metrics.py', desc: 'Prometheus metrics (counters/histograms)' },
+          { path: 'Prometheus metrics + Grafana dashboards', desc: 'Observability' },
+          { path: 'Trivy + Snyk + SonarCloud in CI', desc: 'Security scanning' },
+        ]},
+        { label: 'CW 12 — OPA Policies', files: [
+          { path: 'OPA Gatekeeper + constraint templates', desc: 'Policy enforcement' },
+          { path: 'Resource limits + full CI pipeline', desc: 'Production CI' },
+        ]},
+      ]
+    },
+    {
+      id: 'ip4', week: 'P4', title: 'Phase 4: Advanced & Portfolio',
+      groups: [
+        { label: 'CW 13 — Argo CD GitOps', files: [
+          { path: 'Argo CD install + application sync', desc: 'GitOps' },
+          { path: 'CI → Git → auto-deploy pipeline', desc: 'Continuous deployment' },
+          { path: 'Canary rollouts', desc: 'Progressive delivery' },
+        ]},
+        { label: 'CW 14 — Ragas + Evidently', files: [
+          { path: 'Ragas evaluation (faithfulness ≥ 0.7)', desc: 'RAG quality' },
+          { path: 'src/services/monitoring/drift_detector.py', desc: 'Evidently drift monitoring' },
+          { path: 'airflow/dags/paper_ingestion/monitoring.py', desc: 'Weekly drift task' },
+          { path: 'Evidently drift monitoring + CI gates', desc: 'Drift detection' },
+        ]},
+        { label: 'CW 15 — AI Safety', files: [
+          { path: 'src/services/safety/pii_redactor.py', desc: 'Presidio PII detection/redaction' },
+          { path: 'Presidio PII redaction', desc: 'Data privacy' },
+          { path: 'src/services/safety/output_filter.py', desc: 'Prompt injection defense + quality filter' },
+          { path: 'Output filters + model cards', desc: 'Responsible AI' },
+        ]},
+        { label: 'CW 16 — Portfolio', files: [
+          { path: 'GitHub profile README', desc: 'Personal brand' },
+          { path: 'Repo polish + architecture diagrams', desc: 'Documentation' },
+          { path: 'Interview preparation', desc: 'Career readiness' },
+        ]},
+      ]
+    },
+  ]
+};
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  STATE & PERSISTENCE                                           ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+const STORAGE_KEY = 'paperlens-progress-v1';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  updateLastSaved();
+}
+
+function getFileKey(trackId, weekId, path) {
+  return `${trackId}::${weekId}::${path}`;
+}
+
+let state = loadState();
+
+// Pre-populate ALL items from DATA (track every file, not just done ones)
+for (const [trackId, weeks] of Object.entries(DATA)) {
+  for (const week of weeks) {
+    for (const group of week.groups) {
+      for (const file of group.files) {
+        const key = getFileKey(trackId, week.id, file.path);
+        if (!(key in state)) {
+          state[key] = !!file.done;
+        }
+      }
+    }
+  }
+}
+saveState(state);
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  RENDERING                                                     ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+function getTrackColor(trackId) {
+  return { backend: 'teal', frontend: 'blue', infra: 'purple' }[trackId];
+}
+
+function countTrack(trackId) {
+  const weeks = DATA[trackId];
+  let total = 0, done = 0;
+  for (const week of weeks) {
+    for (const group of week.groups) {
+      for (const file of group.files) {
+        total++;
+        if (state[getFileKey(trackId, week.id, file.path)]) done++;
+      }
+    }
+  }
+  return { total, done };
+}
+
+function countWeek(trackId, week) {
+  let total = 0, done = 0;
+  for (const group of week.groups) {
+    for (const file of group.files) {
+      total++;
+      if (state[getFileKey(trackId, week.id, file.path)]) done++;
+    }
+  }
+  return { total, done };
+}
+
+function renderDashboard() {
+  const dash = document.getElementById('dashboard');
+  const tracks = ['backend', 'frontend', 'infra'];
+  const labels = ['Backend', 'Frontend', 'Infra'];
+  const colors = ['teal', 'blue', 'purple'];
+
+  let grandTotal = 0, grandDone = 0;
+  const counts = tracks.map(t => {
+    const c = countTrack(t);
+    grandTotal += c.total;
+    grandDone += c.done;
+    return c;
+  });
+
+  const grandPct = grandTotal ? Math.round((grandDone / grandTotal) * 100) : 0;
+
+  let html = `
+    <div class="dash-card" style="border: 1px solid rgba(255,255,255,0.15);">
+      <div class="dash-number" style="color: #FFFFFF;">${grandDone}/${grandTotal}</div>
+      <div class="dash-label">Overall</div>
+      <div class="dash-bar"><div class="dash-fill fill-white" style="width: ${grandPct}%;"></div></div>
+    </div>
+  `;
+
+  tracks.forEach((t, i) => {
+    const pct = counts[i].total ? Math.round((counts[i].done / counts[i].total) * 100) : 0;
+    html += `
+      <div class="dash-card">
+        <div class="dash-number color-${colors[i]}">${counts[i].done}/${counts[i].total}</div>
+        <div class="dash-label">${labels[i]}</div>
+        <div class="dash-bar"><div class="dash-fill fill-${colors[i]}" style="width: ${pct}%;"></div></div>
+      </div>
+    `;
+  });
+
+  // Percentage card
+  html += `
+    <div class="dash-card">
+      <div class="dash-number color-orange">${grandPct}%</div>
+      <div class="dash-label">Complete</div>
+      <div class="dash-bar"><div class="dash-fill fill-orange" style="width: ${grandPct}%;"></div></div>
+    </div>
+  `;
+
+  dash.innerHTML = html;
+}
+
+function renderTrack(trackId) {
+  const panel = document.getElementById(`track-${trackId}`);
+  const color = getTrackColor(trackId);
+  const weeks = DATA[trackId];
+  let html = '';
+
+  for (const week of weeks) {
+    const { total, done } = countWeek(trackId, week);
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const isOpen = done < total; // auto-open incomplete weeks
+
+    html += `
+      <div class="week-section${isOpen ? ' open' : ''}" data-week="${week.id}">
+        <div class="week-header" onclick="toggleWeek(this)">
+          <span class="week-chevron">▶</span>
+          <span class="week-badge badge-${color}">${week.week}</span>
+          <span class="week-title">${week.title}</span>
+          <span class="week-counter" data-counter="${week.id}">${done}/${total}</span>
+          <div class="week-progress">
+            <div class="week-progress-fill fill-${color}" data-bar="${week.id}" style="width: ${pct}%;"></div>
+          </div>
+          <span class="week-pct color-${color}" data-pct="${week.id}">${pct}%</span>
+        </div>
+        <div class="week-body">
+    `;
+
+    for (const group of week.groups) {
+      html += `<div class="file-group-label">${group.label}</div>`;
+      for (const file of group.files) {
+        const key = getFileKey(trackId, week.id, file.path);
+        const checked = state[key] ? 'checked' : '';
+        const checkedClass = state[key] ? ' checked' : '';
+        html += `
+          <div class="file-item${checkedClass}" data-key="${key}">
+            <input type="checkbox" class="file-cb${color !== 'teal' ? ' file-cb-' + color : ''}"
+              ${checked} onchange="toggleFile('${trackId}', '${week.id}', '${escapeAttr(file.path)}', this)">
+            <span class="file-path">${file.path}</span>
+            <span class="file-desc">${file.desc}</span>
+          </div>
+        `;
+      }
+    }
+
+    html += `</div></div>`;
+  }
+
+  panel.innerHTML = html;
+}
+
+function escapeAttr(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function renderTabCounts() {
+  for (const trackId of ['backend', 'frontend', 'infra']) {
+    const { total, done } = countTrack(trackId);
+    document.getElementById(`tab-count-${trackId}`).textContent = `${done}/${total}`;
+  }
+}
+
+function renderAll() {
+  renderDashboard();
+  renderTabCounts();
+  for (const trackId of ['backend', 'frontend', 'infra']) {
+    renderTrack(trackId);
+  }
+}
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  INTERACTIONS                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+function toggleFile(trackId, weekId, path, cb) {
+  const key = getFileKey(trackId, weekId, path);
+  state[key] = cb.checked;
+  saveState(state);
+
+  // Update file item visual
+  const fileItem = cb.closest('.file-item');
+  fileItem.classList.toggle('checked', cb.checked);
+
+  // Update week counters
+  const week = DATA[trackId].find(w => w.id === weekId);
+  const { total, done } = countWeek(trackId, week);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  const section = cb.closest('.week-section');
+  section.querySelector('[data-counter]').textContent = `${done}/${total}`;
+  section.querySelector('[data-bar]').style.width = `${pct}%`;
+  section.querySelector('[data-pct]').textContent = `${pct}%`;
+
+  // Update dashboard + tab counts
+  renderDashboard();
+  renderTabCounts();
+}
+
+function toggleWeek(header) {
+  header.closest('.week-section').classList.toggle('open');
+}
+
+function switchTrack(trackId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-track="${trackId}"]`).classList.add('active');
+  document.querySelectorAll('.track-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`track-${trackId}`).classList.add('active');
+}
+
+function expandAll() {
+  document.querySelectorAll('.track-panel.active .week-section').forEach(s => s.classList.add('open'));
+}
+
+function collapseAll() {
+  document.querySelectorAll('.track-panel.active .week-section').forEach(s => s.classList.remove('open'));
+}
+
+function resetProgress() {
+  if (!confirm('Reset ALL progress? This cannot be undone.')) return;
+  state = {};
+  saveState(state);
+  renderAll();
+}
+
+function exportProgress() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `paperlens-progress-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importProgress() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (typeof imported !== 'object') throw new Error('Invalid format');
+        state = imported;
+        saveState(state);
+        renderAll();
+        alert(`Imported ${Object.keys(imported).length} items.`);
+      } catch (err) {
+        alert('Invalid JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function updateLastSaved() {
+  const el = document.getElementById('lastSaved');
+  if (el) el.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'e' || e.key === 'E') expandAll();
+  if (e.key === 'c' || e.key === 'C') collapseAll();
+  if (e.key === '1') switchTrack('backend');
+  if (e.key === '2') switchTrack('frontend');
+  if (e.key === '3') switchTrack('infra');
+});
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  INIT                                                          ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+renderAll();
+updateLastSaved();
+</script>
+</body>
+</html>

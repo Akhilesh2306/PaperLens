@@ -13,4 +13,5 @@ wheels/
 .env
 
 # Static files
-static/
+contexts/
+individual-plans/

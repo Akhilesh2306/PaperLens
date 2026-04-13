@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaperLens — Question Bank</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface-hover: #222633;
+            --border: #2a2e3d;
+            --text: #e4e4e7;
+            --text-muted: #9ca3af;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --zone1: #3b82f6;
+            --zone1-bg: rgba(59, 130, 246, 0.08);
+            --zone2: #f59e0b;
+            --zone2-bg: rgba(245, 158, 11, 0.08);
+            --interview: #10b981;
+            --interview-bg: rgba(16, 185, 129, 0.08);
+            --tag-bg: rgba(99, 102, 241, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar h1 {
+            font-size: 18px;
+            margin-bottom: 4px;
+            color: var(--accent-light);
+        }
+
+        .sidebar .subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .sidebar h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            margin-top: 20px;
+        }
+
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .filter-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .filter-btn.active {
+            background: var(--tag-bg);
+            color: var(--accent-light);
+        }
+
+        .filter-btn .count {
+            font-size: 11px;
+            background: var(--border);
+            padding: 1px 7px;
+            border-radius: 10px;
+            color: var(--text-muted);
+        }
+
+        .filter-btn.active .count {
+            background: rgba(99, 102, 241, 0.25);
+            color: var(--accent-light);
+        }
+
+        /* Main content */
+        .main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 32px 40px;
+            max-width: 900px;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h2 {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .stats {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .stats span {
+            color: var(--accent-light);
+            font-weight: 600;
+        }
+
+        /* Search */
+        .search-bar {
+            width: 100%;
+            padding: 10px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            margin-bottom: 24px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-bar:focus {
+            border-color: var(--accent);
+        }
+
+        .search-bar::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Question cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: #3a3f52;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .zone-badge {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        .zone-badge.zone1 {
+            color: var(--zone1);
+            background: var(--zone1-bg);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .zone-badge.zone2 {
+            color: var(--zone2);
+            background: var(--zone2-bg);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .zone-badge.interview {
+            color: var(--interview);
+            background: var(--interview-bg);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .card-content {
+            flex: 1;
+        }
+
+        .question-text {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--tag-bg);
+            color: var(--accent-light);
+        }
+
+        .tag.week-tag {
+            background: rgba(156, 163, 175, 0.12);
+            color: var(--text-muted);
+        }
+
+        .tag.difficulty-foundational {
+            background: rgba(16, 185, 129, 0.1);
+            color: #6ee7b7;
+        }
+
+        .tag.difficulty-intermediate {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+        }
+
+        .tag.difficulty-advanced {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+        }
+
+        /* Answer reveal */
+        .answer-toggle {
+            display: block;
+            width: 100%;
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--border);
+            color: var(--accent-light);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+        }
+
+        .answer-toggle:hover {
+            background: var(--surface-hover);
+        }
+
+        .answer-toggle .arrow {
+            display: inline-block;
+            transition: transform 0.2s;
+            margin-right: 6px;
+        }
+
+        .answer-toggle.open .arrow {
+            transform: rotate(90deg);
+        }
+
+        .answer-body {
+            display: none;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.15);
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .answer-body.visible {
+            display: block;
+        }
+
+        .answer-body strong {
+            color: var(--text);
+        }
+
+        .answer-body ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .answer-body li {
+            margin-bottom: 4px;
+        }
+
+        .answer-body code {
+            background: rgba(99, 102, 241, 0.12);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 12.5px;
+            color: var(--accent-light);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <nav class="sidebar">
+            <h1>PaperLens</h1>
+            <p class="subtitle">Question Bank</p>
+
+            <h3>By Domain</h3>
+            <div id="domain-filters"></div>
+
+            <h3>By Week</h3>
+            <div id="week-filters"></div>
+
+            <h3>By Type</h3>
+            <div id="zone-filters"></div>
+        </nav>
+
+        <main class="main">
+            <div class="header">
+                <h2 id="page-title">All Questions</h2>
+                <p class="stats">Showing <span id="shown-count">0</span> of <span id="total-count">0</span> questions</p>
+            </div>
+
+            <input type="text" class="search-bar" id="search" placeholder="Search questions..." />
+
+            <div id="cards-container"></div>
+        </main>
+    </div>
+
+    <script>
+    // ============================================================
+    // QUESTION DATA — Add new questions here as modules progress
+    // ============================================================
+    const questions = [
+
+        // ── Week 1: Docker / Containerization ──────────────────
+        {
+            zone: "zone1",
+            domain: "Docker",
+            week: 1,
+            difficulty: "Foundational",
+            question: "Why does Airflow need its own Docker container separate from the FastAPI API?",
+            answer: `<strong>Different workloads, different lifecycle.</strong>
+            <ul>
+                <li>FastAPI is a <strong>long-running request server</strong> — starts, listens on a port, handles HTTP requests with sub-second latency.</li>
+                <li>Airflow is an <strong>orchestration system</strong> with a scheduler, webserver, metadata DB, and workers — fundamentally different resource profile.</li>
+                <li><strong>Fault isolation</strong>: if Airflow crashes, the API stays up (and vice versa).</li>
+                <li><strong>Independent scaling</strong>: you might need 3 API replicas but only 1 Airflow scheduler.</li>
+                <li><strong>Dependency conflicts</strong>: Airflow pins hundreds of transitive dependencies that could conflict with FastAPI's.</li>
+                <li>In Kubernetes, they'll be separate Deployments with separate health checks and scaling policies.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "Docker",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "You're using python:3.12-slim as the Airflow base image. A colleague suggests using the official apache/airflow image instead. What are the tradeoffs?",
+            answer: `<strong>Build-from-scratch vs official image — control vs convenience.</strong>
+            <ul>
+                <li><strong>Official image</strong>: Airflow pre-installed, user pre-created, directories ready. Faster to set up. But opaque — you don't control what's inside, harder to debug, and version-locked to their choices.</li>
+                <li><strong>python:3.12-slim</strong>: You control everything — system deps, Python version, Airflow version, user creation. More lines in Dockerfile, but transparent and debuggable.</li>
+                <li><strong>Critical</strong>: Don't mix approaches (using official image then re-creating the user/dirs that already exist).</li>
+                <li><strong>Consistency matters</strong>: If your API uses python:3.12, Airflow should too. Matching Python versions across containers prevents subtle bugs.</li>
+            </ul>`
+        },
+        {
+            zone: "interview",
+            domain: "Docker",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "\"Walk me through your Docker architecture. Why multiple containers instead of one monolith?\"",
+            answer: `<strong>Single-responsibility principle applied to containers.</strong><br><br>
+            "Our system has three distinct workloads: the FastAPI API server handling user requests, the Airflow orchestrator managing data pipelines, and infrastructure services (PostgreSQL, OpenSearch, Ollama). Each is in its own container because:
+            <ul>
+                <li>They have different scaling needs — we might need multiple API replicas but only one scheduler.</li>
+                <li>They have different dependency trees — Airflow requires sync SQLAlchemy &lt;2.0, our API uses async SQLAlchemy 2.0+. Separate containers eliminate version conflicts.</li>
+                <li>Fault isolation — a crash in one service doesn't cascade to others.</li>
+                <li>In Kubernetes, each becomes an independent Deployment with its own health checks, resource limits, and HPA policies."</li>
+            </ul>`
+        },
+
+        // ── Week 1: Airflow / Orchestration ────────────────────
+        {
+            zone: "zone1",
+            domain: "Airflow",
+            week: 1,
+            difficulty: "Foundational",
+            question: "Why use Airflow instead of a cron job for the paper ingestion pipeline?",
+            answer: `<strong>Airflow is a DAG scheduler — it handles dependencies, retries, and visibility that cron can't.</strong>
+            <ul>
+                <li>A cron job runs a script at a time. If step 3 of 5 fails, cron doesn't know — it either crashes or silently skips.</li>
+                <li>Airflow defines <strong>task dependencies</strong> as a DAG: fetch papers → download PDFs → parse → chunk → index. Each step can retry independently.</li>
+                <li><strong>Backfilling</strong>: if the pipeline missed 3 days, Airflow can automatically run those missed intervals.</li>
+                <li><strong>Visibility</strong>: a web UI shows exactly which task failed, when, with logs — critical for debugging at 3am.</li>
+                <li><strong>Idempotency</strong>: well-designed Airflow tasks can be re-run safely without duplicating data.</li>
+                <li><strong>Key distinction</strong>: Airflow <em>orchestrates</em> but doesn't <em>process</em>. Tasks call your existing Python code; Airflow decides <em>when</em> and <em>in what order</em>.</li>
+            </ul>`
+        },
+        {
+            zone: "zone1",
+            domain: "Airflow",
+            week: 1,
+            difficulty: "Foundational",
+            question: "Why can't Airflow use async SQLAlchemy like the FastAPI API does?",
+            answer: `<strong>Airflow's core is synchronous — built in 2014, pre-async Python.</strong>
+            <ul>
+                <li>Airflow's scheduler, ORM, and executor all use synchronous Python. Its metadata database access uses <code>psycopg2</code> (sync driver).</li>
+                <li>DAG tasks execute as <strong>regular synchronous Python functions</strong> — not async coroutines. No event loop involved.</li>
+                <li>Airflow's internals depend on SQLAlchemy &lt;2.0 patterns. Installing SQLAlchemy 2.0+ in the Airflow container would break Airflow itself.</li>
+                <li><strong>Practical consequence</strong>: <code>requirements-airflow.txt</code> pins <code>sqlalchemy&lt;2.0</code>. Separate containers = separate dependency trees = no conflict with the API's SQLAlchemy 2.0+.</li>
+                <li>When Airflow tasks write to the PaperLens database (Week 2), they'll use <code>psycopg2</code> (sync) — same database, different driver.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "Airflow",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "The entrypoint starts the webserver as a daemon and the scheduler in the foreground. Why that order? What breaks if you reverse them?",
+            answer: `<strong>Docker containers die when PID 1 exits. The scheduler is the critical process.</strong>
+            <ul>
+                <li>The entrypoint script is PID 1. It must keep a foreground process running or the container exits.</li>
+                <li><strong>Scheduler in foreground</strong>: if it crashes → container exits → Docker restarts it → everything recovers. This is correct because the scheduler is critical — without it, zero tasks execute.</li>
+                <li><strong>Webserver as daemon</strong>: if it crashes → container stays alive (scheduler still running). You lose the UI but pipelines continue. Acceptable degradation.</li>
+                <li><strong>If reversed</strong> (webserver foreground, scheduler daemon): scheduler crashes → nobody notices, container stays up, but <strong>no tasks execute</strong> → silent failure, the worst kind.</li>
+                <li>The <code>--daemon</code> flag tells the webserver to fork into the background. The <code>&</code> is bash backgrounding (technically redundant with --daemon, but harmless).</li>
+            </ul>`
+        },
+        {
+            zone: "interview",
+            domain: "Airflow",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "\"How do you handle data pipeline orchestration in your project? Why Airflow over simpler alternatives?\"",
+            answer: `"We use Airflow for our paper ingestion pipeline — it fetches papers from Semantic Scholar, downloads PDFs, parses them, generates embeddings, and indexes into OpenSearch. We chose Airflow over cron because:
+            <ul>
+                <li>Task dependencies are explicit — if PDF download fails, parsing doesn't run, but the DAG retries the download automatically.</li>
+                <li>Backfill support — if the API was down for 3 days, Airflow catches up on missed intervals without manual intervention.</li>
+                <li>Full observability — the web UI shows task status, duration, and logs. Essential for debugging pipeline failures.</li>
+                <li>Airflow orchestrates but doesn't process — our tasks call the same service code the API uses, keeping business logic in one place."</li>
+            </ul>`
+        },
+
+        // ── Week 1: Async Architecture ─────────────────────────
+        {
+            zone: "zone1",
+            domain: "Async Python",
+            week: 1,
+            difficulty: "Foundational",
+            question: "Why did PaperLens choose async (asyncpg) over sync (psycopg2) for the API's database access?",
+            answer: `<strong>Non-blocking I/O for high concurrency in a web server context.</strong>
+            <ul>
+                <li>FastAPI runs on an async event loop (uvicorn/asyncio). When a request hits the database, a sync driver <strong>blocks the entire thread</strong> until the query returns.</li>
+                <li>With <code>asyncpg</code>, the event loop <strong>yields control</strong> during the database call — other requests can be processed while waiting for I/O.</li>
+                <li>Practical impact: with 4 uvicorn workers and sync DB, you handle ~4 concurrent DB queries. With async, the same 4 workers can handle hundreds of concurrent queries.</li>
+                <li><strong>Trade-off</strong>: async adds complexity (async/await everywhere, async context managers, async generators for dependencies). Worth it for a web server, not worth it for batch jobs (hence Airflow stays sync).</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "Async Python",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "Your dependencies.py uses BaseDatabase (abstract interface) instead of PostgreSQLDatabase (concrete class). Why? When would you NOT do this?",
+            answer: `<strong>Dependency Inversion Principle — depend on abstractions, not concretions.</strong>
+            <ul>
+                <li>Route handlers and the dependency layer only know about <code>BaseDatabase</code>. They don't care if it's PostgreSQL, SQLite, or a mock.</li>
+                <li>The factory (<code>make_database()</code>) decides the concrete implementation. Swapping databases means changing one factory function, not every handler.</li>
+                <li>In tests, you can inject a mock or SQLite-backed database without touching the API code.</li>
+                <li><strong>When NOT to do this</strong>: if you're certain you'll never swap the database AND the abstraction adds no testing benefit. For a personal project with one DB, it's arguably over-engineered — but it's the right habit for production systems, and PaperLens is practicing production patterns.</li>
+            </ul>`
+        },
+        {
+            zone: "interview",
+            domain: "Async Python",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "\"Explain your database access pattern. Why async? How do you manage sessions?\"",
+            answer: `"We use SQLAlchemy 2.0 with asyncpg for non-blocking database access inside FastAPI.
+            <ul>
+                <li>An abstract <code>BaseDatabase</code> interface defines the contract (startup, close, get_session). The concrete <code>PostgreSQLDatabase</code> implements it with <code>create_async_engine</code> and <code>async_sessionmaker</code>.</li>
+                <li>A factory function <code>make_database()</code> creates the implementation — selected at startup and stored on <code>app.state</code>.</li>
+                <li>FastAPI's dependency injection chains: <code>get_database()</code> reads from app.state → <code>get_db_session()</code> yields a session via async context manager → route handlers receive a ready-to-use <code>AsyncSession</code>.</li>
+                <li>Sessions auto-rollback on exception and close after the request. No manual cleanup in handlers.</li>
+                <li>We kept <code>psycopg2</code> in dependencies for Airflow's sync access to the same database — different driver, same DB, different execution context."</li>
+            </ul>`
+        },
+
+        // ── Week 1: FastAPI Application Structure ──────────────
+        {
+            zone: "zone1",
+            domain: "FastAPI",
+            week: 1,
+            difficulty: "Foundational",
+            question: "What is the lifespan context manager in FastAPI, and why use it instead of @app.on_event('startup')?",
+            answer: `<strong>Lifespan manages the full startup→run→shutdown lifecycle in one place.</strong>
+            <ul>
+                <li><code>@app.on_event("startup")</code> and <code>@app.on_event("shutdown")</code> are <strong>deprecated</strong> in modern FastAPI. They split related logic into separate functions.</li>
+                <li>The <code>lifespan</code> context manager keeps startup and shutdown together — what you create before <code>yield</code>, you clean up after <code>yield</code>.</li>
+                <li>It's an <code>@asynccontextmanager</code>: code before yield = startup (create DB, connect services), yield = app runs, code after yield = shutdown (close connections, flush caches).</li>
+                <li>Resources stored on <code>app.state</code> during startup are available to all request handlers via dependency injection.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "FastAPI",
+            week: 1,
+            difficulty: "Foundational",
+            question: "The health endpoint catches database exceptions and returns 'degraded' instead of letting FastAPI return a 500. Why is this the right choice for a health check?",
+            answer: `<strong>Health checks report status — they should never crash.</strong>
+            <ul>
+                <li>Load balancers and orchestrators (K8s, Docker) use health endpoints to decide if a container is alive. A 500 error may cause the container to be restarted or removed from the pool.</li>
+                <li><strong>Degraded ≠ dead</strong>: if the database is down but the API process is running, the correct response is "I'm alive but degraded" — not a crash. The API might still serve cached responses or non-DB endpoints.</li>
+                <li>Returning a structured <code>HealthResponse</code> with per-service status lets monitoring tools pinpoint exactly which dependency is failing.</li>
+                <li>A health endpoint that can crash is worse than no health endpoint — it creates cascading restarts.</li>
+            </ul>`
+        },
+
+        // ── Week 1: Async Testing ─────────────────────────────
+        {
+            zone: "zone1",
+            domain: "Testing",
+            week: 1,
+            difficulty: "Foundational",
+            question: "Why mock the database in tests instead of using a real test PostgreSQL instance?",
+            answer: `<strong>Speed, isolation, and determinism.</strong>
+            <ul>
+                <li><strong>Speed</strong>: Unit tests should run in milliseconds. A real DB adds connection overhead, schema setup, and teardown — turning a 0.15s suite into 5+ seconds.</li>
+                <li><strong>Isolation</strong>: Tests should never fail because of external state. A real DB can have leftover data from a previous run, a crashed container, or a port conflict.</li>
+                <li><strong>Determinism</strong>: With mocks, you control exactly what the DB returns. <code>AsyncMock().execute()</code> always succeeds; <code>side_effect = Exception()</code> always fails. No flaky network issues.</li>
+                <li><strong>CI/CD friendly</strong>: Mocked tests run anywhere — no Docker, no database container, no migrations needed in the CI pipeline.</li>
+                <li><strong>When to use a real DB</strong>: Integration tests. When you need to verify actual SQL queries, schema migrations, or transaction behavior. Those go in <code>tests/integration/</code> and are slower by design.</li>
+            </ul>`
+        },
+        {
+            zone: "zone1",
+            domain: "Testing",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "How does FastAPI's dependency_overrides work, and why must the override be an async generator (not a regular function)?",
+            answer: `<strong>dependency_overrides swaps a dependency function with a fake at the framework level.</strong>
+            <ul>
+                <li><code>app.dependency_overrides[get_db_session] = fake_function</code> tells FastAPI: "whenever a route needs <code>get_db_session</code>, call <code>fake_function</code> instead."</li>
+                <li>The override must <strong>match the signature pattern</strong> of the original. Since <code>get_db_session</code> is an async generator (<code>async def</code> with <code>yield</code>), the override must also be an async generator.</li>
+                <li>If you use a regular function that <code>return</code>s instead of <code>yield</code>s, FastAPI's dependency resolution breaks — it expects to iterate over a generator, not consume a return value.</li>
+                <li>The <code>yield</code> also enables cleanup: code after <code>yield</code> runs when the request completes (like closing a session). Even in mocks, the generator protocol must be honored.</li>
+                <li><strong>Cleanup is critical</strong>: <code>app.dependency_overrides.clear()</code> after each test prevents one test's mock from leaking into another.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "Testing",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "Your test uses mock_db_session.execute.side_effect = Exception('...') to simulate a degraded DB. What would happen if you set side_effect on the mock itself instead of on .execute?",
+            answer: `<strong>The wrong thing would break at the wrong layer.</strong>
+            <ul>
+                <li>Setting <code>mock_db_session.side_effect = Exception()</code> would make the <strong>mock object itself</strong> raise when called — but the mock isn't called as a function, it's used as an object (<code>db_session.execute()</code>).</li>
+                <li>The health endpoint does <code>await db_session.execute(text("SELECT 1"))</code>. It's the <code>.execute()</code> method that needs to fail, not the session object itself.</li>
+                <li><code>AsyncMock</code> auto-creates child mocks for attribute access. <code>mock.execute</code> is itself an <code>AsyncMock</code>, so <code>mock.execute.side_effect = Exception()</code> targets exactly the right call.</li>
+                <li><strong>General principle</strong>: set <code>side_effect</code> on the specific method the code-under-test calls, not on the parent object.</li>
+            </ul>`
+        },
+        {
+            zone: "interview",
+            domain: "Testing",
+            week: 1,
+            difficulty: "Intermediate",
+            question: "\"How do you test async FastAPI endpoints? Walk me through your test setup.\"",
+            answer: `"We use pytest with pytest-asyncio in auto mode, so all async test functions and fixtures run on the event loop automatically.
+            <ul>
+                <li>A shared <code>conftest.py</code> provides two fixtures: <code>mock_db_session</code> (an <code>AsyncMock</code>) and <code>async_client</code> (an httpx <code>AsyncClient</code>).</li>
+                <li>The client fixture overrides FastAPI's <code>get_db_session</code> dependency with an async generator that yields the mock — so routes receive a fake session instead of a real PostgreSQL connection.</li>
+                <li>We use <code>ASGITransport(app=app)</code> with httpx to send requests directly to the ASGI app in-process — no server startup, no network I/O.</li>
+                <li>For the health endpoint, we test two paths: the happy path (mock succeeds, status is 'ok') and the degraded path (<code>mock.execute.side_effect = Exception()</code>, status is 'degraded').</li>
+                <li>After each test, <code>app.dependency_overrides.clear()</code> prevents mock leakage across tests.</li>
+                <li>Config tests use <code>.env.test</code> loaded by pytest-dotenv, so we validate that Pydantic Settings correctly parses env vars, rejects invalid DB URLs, and handles nested OpenSearch config via the <code>__</code> delimiter."</li>
+            </ul>`
+        },
+    ];
+
+    // ============================================================
+    // APP LOGIC
+    // ============================================================
+    let activeFilters = { domain: null, week: null, zone: null };
+
+    function init() {
+        buildSidebar();
+        renderCards();
+    }
+
+    function buildSidebar() {
+        // Domain filters
+        const domains = [...new Set(questions.map(q => q.domain))].sort();
+        const domainContainer = document.getElementById('domain-filters');
+        domainContainer.innerHTML = makeFilterBtn('domain', null, 'All Domains', questions.length);
+        domains.forEach(d => {
+            const count = questions.filter(q => q.domain === d).length;
+            domainContainer.innerHTML += makeFilterBtn('domain', d, d, count);
+        });
+
+        // Week filters
+        const weeks = [...new Set(questions.map(q => q.week))].sort((a, b) => a - b);
+        const weekContainer = document.getElementById('week-filters');
+        weekContainer.innerHTML = makeFilterBtn('week', null, 'All Weeks', questions.length);
+        weeks.forEach(w => {
+            const count = questions.filter(q => q.week === w).length;
+            weekContainer.innerHTML += makeFilterBtn('week', w, `Week ${w}`, count);
+        });
+
+        // Zone filters
+        const zoneContainer = document.getElementById('zone-filters');
+        zoneContainer.innerHTML = makeFilterBtn('zone', null, 'All Types', questions.length);
+        zoneContainer.innerHTML += makeFilterBtn('zone', 'zone1', 'Conceptual (Zone 1)', questions.filter(q => q.zone === 'zone1').length);
+        zoneContainer.innerHTML += makeFilterBtn('zone', 'zone2', 'Design (Zone 2)', questions.filter(q => q.zone === 'zone2').length);
+        zoneContainer.innerHTML += makeFilterBtn('zone', 'interview', 'Interview', questions.filter(q => q.zone === 'interview').length);
+
+        // Attach click events
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.filterType;
+                const value = btn.dataset.filterValue === 'null' ? null : btn.dataset.filterValue;
+                activeFilters[type] = value;
+                updateActiveStates();
+                renderCards();
+            });
+        });
+
+        updateActiveStates();
+    }
+
+    function makeFilterBtn(type, value, label, count) {
+        return `<button class="filter-btn" data-filter-type="${type}" data-filter-value="${value}">
+            ${label} <span class="count">${count}</span>
+        </button>`;
+    }
+
+    function updateActiveStates() {
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            const type = btn.dataset.filterType;
+            const value = btn.dataset.filterValue === 'null' ? null : btn.dataset.filterValue;
+            btn.classList.toggle('active', activeFilters[type] == value);
+        });
+    }
+
+    function getFilteredQuestions() {
+        const search = document.getElementById('search').value.toLowerCase();
+        return questions.filter(q => {
+            if (activeFilters.domain && q.domain !== activeFilters.domain) return false;
+            if (activeFilters.week && q.week !== Number(activeFilters.week)) return false;
+            if (activeFilters.zone && q.zone !== activeFilters.zone) return false;
+            if (search && !q.question.toLowerCase().includes(search) && !q.domain.toLowerCase().includes(search)) return false;
+            return true;
+        });
+    }
+
+    function renderCards() {
+        const filtered = getFilteredQuestions();
+        const container = document.getElementById('cards-container');
+
+        document.getElementById('shown-count').textContent = filtered.length;
+        document.getElementById('total-count').textContent = questions.length;
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="empty-state">
+                <div class="icon">🔍</div>
+                <p>No questions match your filters.</p>
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map((q, i) => {
+            const zoneLabel = q.zone === 'zone1' ? 'Zone 1' : q.zone === 'zone2' ? 'Zone 2' : 'Interview';
+            const diffClass = `difficulty-${q.difficulty.toLowerCase()}`;
+            return `<div class="card">
+                <div class="card-header">
+                    <span class="zone-badge ${q.zone}">${zoneLabel}</span>
+                    <div class="card-content">
+                        <p class="question-text">${q.question}</p>
+                        <div class="tags">
+                            <span class="tag">${q.domain}</span>
+                            <span class="tag week-tag">Week ${q.week}</span>
+                            <span class="tag ${diffClass}">${q.difficulty}</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="answer-toggle" onclick="toggleAnswer(this)">
+                    <span class="arrow">▶</span> Reveal Answer
+                </button>
+                <div class="answer-body">${q.answer}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function toggleAnswer(btn) {
+        const body = btn.nextElementSibling;
+        const isOpen = body.classList.contains('visible');
+        body.classList.toggle('visible');
+        btn.classList.toggle('open');
+        btn.innerHTML = isOpen
+            ? '<span class="arrow">▶</span> Reveal Answer'
+            : '<span class="arrow">▶</span> Hide Answer';
+    }
+
+    // Search
+    document.getElementById('search').addEventListener('input', renderCards);
+
+    // Init
+    init();
+    </script>
+</body>
+</html>
