@@ -8,7 +8,7 @@
   </p>
   <p align="center">
     <a href="#architecture"><img src="https://img.shields.io/badge/Architecture-8_Layers-blue?style=flat-square" alt="Architecture"></a>
-    <a href="#tech-stack"><img src="https://img.shields.io/badge/Docker_Services-13-green?style=flat-square" alt="Docker Services"></a>
+    <a href="#tech-stack"><img src="https://img.shields.io/badge/Docker_Services-6_·_13_planned-green?style=flat-square" alt="Docker Services"></a>
     <a href="#agent-graph"><img src="https://img.shields.io/badge/Agent_Nodes-11-red?style=flat-square" alt="Agent Nodes"></a>
     <a href="#implementation-roadmap"><img src="https://img.shields.io/badge/Build_Plan-8_Weeks-orange?style=flat-square" alt="Build Plan"></a>
     <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
@@ -107,7 +107,7 @@ Researchers in 2026 juggle 4-5 fragmented tools for a single literature review �
 | **Storage** | PostgreSQL, OpenSearch, Redis | Metadata, hybrid search, cache + memory |
 | **Ingestion** | Airflow DAG | Fetch → Parse (Docling) → Chunk → Embed → Index |
 | **Observability** | Langfuse v3, RAGAS | Tracing, quality metrics, evaluation harness |
-| **Infrastructure** | Docker Compose (13 services) | One-command deployment |
+| **Infrastructure** | Docker Compose (6 now, 13 at completion) | One-command deployment |
 
 ## Tech Stack
 
@@ -119,14 +119,14 @@ Researchers in 2026 juggle 4-5 fragmented tools for a single literature review �
 | Package Manager | **UV** | Fast dependency management |
 | Web Framework | **FastAPI ≥0.115** | Async REST API |
 | ORM | **SQLAlchemy 2.0** | Database abstraction |
-| Validation | **Pydantic 2.11** | Data validation & settings |
+| Validation | **Pydantic ≥2.12** | Data validation & settings |
 
 ### Infrastructure (Docker Compose)
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| **PostgreSQL 16** | 5432 | Paper metadata storage |
-| **OpenSearch 2.19** | 9200 | BM25 + KNN hybrid search |
+| **PostgreSQL 17** | 5432 | Paper metadata storage |
+| **OpenSearch 3** | 9200 | BM25 + KNN hybrid search |
 | **OpenSearch Dashboards** | 5601 | Search visualization |
 | **Ollama** | 11434 | Local LLM (llama3.2) |
 | **Apache Airflow** | 8080 | Workflow orchestration |
@@ -208,32 +208,32 @@ START → guardrail ─── score < 60 ──→ out_of_scope → END
 
 The project is built incrementally over **8 weeks**. Weeks 1-7 mirror production RAG patterns. Week 8 adds novel extensions.
 
-| Week | Focus | Files | Key Deliverable |
-|------|-------|-------|----------------|
-| **1** | Infrastructure & Skeleton | 32 | FastAPI + Docker Compose (5 services) + health checks |
-| **2** | Data Ingestion | 16 | Semantic Scholar client + Docling PDF parsing + Airflow DAG |
-| **3** | Keyword Search (BM25) | 9 | OpenSearch index + multi-field boosted search + filtering |
-| **4** | Hybrid Search + Embeddings | 7 | Jina 1024-dim embeddings + RRF fusion + section-aware chunking |
-| **5** | Complete RAG System | 9 | Ollama LLM + streaming SSE + Gradio UI + prompt engineering |
-| **6** | Observability & Caching | 5 | Langfuse tracing + Redis cache (150-400x speedup) |
-| **7** | Agentic RAG & Telegram | 24 | LangGraph 7-node graph + Telegram bot |
-| **8** | **PaperLens Extensions** | 15 | Synthesis + Contradiction + Critic + Memory + RAGAS eval |
+| Week | Focus | Key Deliverable | Status |
+|------|-------|----------------|--------|
+| **1** | Infrastructure & Skeleton | FastAPI + Docker Compose (6 services) + health checks + tests | ✅ Complete |
+| **2** | Data Ingestion | Semantic Scholar client + Docling PDF parsing + Airflow DAG | 🟡 In Progress |
+| **3** | Keyword Search (BM25) | OpenSearch index + multi-field boosted search + filtering | Planned |
+| **4** | Hybrid Search + Embeddings | Jina 1024-dim embeddings + RRF fusion + section-aware chunking | Planned |
+| **5** | Complete RAG System | Ollama LLM + streaming SSE + Gradio UI + prompt engineering | Planned |
+| **6** | Observability & Caching | Langfuse tracing + Redis cache (150-400x speedup) | Planned |
+| **7** | Agentic RAG & Telegram | LangGraph 7-node graph + Telegram bot | Planned |
+| **8** | **PaperLens Extensions** | Synthesis + Contradiction + Critic + Memory + RAGAS eval | Planned |
 
-> See [`static/PAPERLENS_IMPLEMENTATION_PLAN.md`](static/PAPERLENS_IMPLEMENTATION_PLAN.md) for the complete file-by-file coding guide.
+> See [`static/PAPERLENS_MASTER_PLAN.md`](static/PAPERLENS_MASTER_PLAN.md) for the complete file-by-file coding guide.
 >
-> Open [`static/PaperLens-storybook.html`](static/PaperLens-storybook.html) in a browser for an interactive visual walkthrough.
+> Open [`static/PAPERLENS_MASTER_STORYBOOK.html`](static/PAPERLENS_MASTER_STORYBOOK.html) in a browser for an interactive visual walkthrough.
 
 ## Project Structure
 
 ```
 paperlens/
 ├── src/
-│   ├── config.py                          # Pydantic Settings (all config)
+│   ├── settings/
+│   │   ├── config.py                      # Pydantic Settings (all config)
+│   │   └── logging.py                     # Centralized logging setup
 │   ├── exceptions.py                      # Custom exception hierarchy
 │   ├── main.py                            # FastAPI app + lifespan
 │   ├── dependencies.py                    # DI definitions
-│   ├── database.py                        # Standalone DB access (Airflow)
-│   ├── gradio_app.py                      # Gradio web UI
 │   ├── middlewares.py                     # Request logging
 │   ├── db/
 │   │   ├── interfaces/
@@ -251,7 +251,7 @@ paperlens/
 │   │   ├── indexing/models.py             # Chunk schemas
 │   │   └── pdf_parser/models.py           # PDF content schemas
 │   ├── routers/
-│   │   ├── ping.py                        # GET /health
+│   │   ├── health.py                      # GET /health
 │   │   ├── hybrid_search.py               # POST /hybrid-search
 │   │   ├── ask.py                         # POST /ask + POST /stream
 │   │   ├── agentic_ask.py                 # POST /ask-agentic
@@ -291,10 +291,8 @@ paperlens/
 │   ├── entrypoint.sh
 │   ├── requirements-airflow.txt
 │   └── dags/
-│       ├── hello_world_dag.py
-│       ├── paper_ingestion_dag.py
-│       └── paper_ingestion/
-│           ├── common.py, setup.py, fetching.py, indexing.py, reporting.py
+│       ├── health_dag.py                  # API + DB connectivity check
+│       ├── paper_ingestion/               # Ingestion modules (W2+)
 ├── tests/
 │   ├── conftest.py
 │   ├── unit/                              # 14 files — config, schemas, services, agents
@@ -302,10 +300,12 @@ paperlens/
 │   ├── integration/                       # 1 file — real service connectivity
 │   └── evaluation/                        # 2 files — RAGAS + quality metrics (W8)
 ├── static/
-│   ├── PAPERLENS_IMPLEMENTATION_PLAN.md   # Complete file-by-file coding guide
-│   └── PaperLens-storybook.html           # Interactive visual walkthrough
+│   ├── PAPERLENS_MASTER_PLAN.md            # Complete file-by-file coding guide
+│   ├── PAPERLENS_MASTER_STORYBOOK.html    # Interactive visual walkthrough
+│   ├── PAPERLENS_QUESTION_BANK.html       # Concept revision & interview prep
+│   └── contexts/SESSION_CONTEXT.md        # Session bootstrap context
 ├── Dockerfile                             # Multi-stage API build
-├── compose.yml                            # 13 Docker services
+├── compose.yml                            # Docker services (6 now, 13 at completion)
 ├── Makefile                               # Developer commands
 ├── pyproject.toml                         # UV project config
 ├── .env.example                           # Environment template
@@ -340,7 +340,7 @@ cp .env.example .env
 docker compose up --build -d
 
 # Verify
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8585/api/v1/health
 ```
 
 ### Makefile Commands
@@ -354,7 +354,7 @@ make health      # Check service health
 make test        # Run test suite
 make lint        # Run ruff linter
 make format      # Run ruff formatter
-make clean       # Remove containers, volumes, caches
+make cleanup     # Remove containers, volumes, caches
 ```
 
 ## Design Patterns
@@ -392,7 +392,9 @@ tests/
 
 ## Status
 
-🚧 **Under active development** — Building week by week following the [implementation plan](static/PAPERLENS_IMPLEMENTATION_PLAN.md).
+🚧 **Under active development** — Building week by week following the [implementation plan](static/PAPERLENS_MASTER_PLAN.md).
+
+**Current release: v0.1.0** — Infrastructure & project skeleton complete. Async FastAPI app, PostgreSQL, OpenSearch, Ollama, and Airflow running in Docker Compose. Health endpoint, dependency injection, test framework with mocked async DB sessions.
 
 ## License
 
