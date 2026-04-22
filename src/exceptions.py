@@ -30,6 +30,37 @@ class OpenSearchException(Exception):
     """
 
 
+# Exceptions related to Semantic Scholar
+class SemanticScholarException(Exception):
+    """
+    Exception raised for Semantic Scholar API-related errors.
+    """
+
+
+class SemanticScholarBadRequest(SemanticScholarException):
+    """
+    Exception raised for bad requests to Semantic Scholar API.
+    """
+
+
+class SemanticScholarPaperNotFound(SemanticScholarException):
+    """
+    Exception raised when a paper is not found in Semantic Scholar API.
+    """
+
+
+class SemanticScholarRateLimitError(SemanticScholarException):
+    """
+    Exception raised when Semantic Scholar API rate limit is exceeded.
+    """
+
+
+class SemanticScholarServerError(SemanticScholarException):
+    """
+    Exception raised for server errors from Semantic Scholar API.
+    """
+
+
 # Exceptions related to PDF downloading, parsing, and validation
 class PDFDownloadException(Exception):
     """

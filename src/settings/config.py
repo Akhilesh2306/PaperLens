@@ -48,6 +48,45 @@ class OpenSearchSettings(BaseConfigSettings):
     max_text_size: int = 1000000
 
 
+class SemanticScholarSettings(BaseConfigSettings):
+    """
+    Configuration settings for Semantic Scholar API.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(ENV_FILE_PATH)],
+        env_prefix="SEMANTIC_SCHOLAR__",
+        extra="ignore",
+        frozen=True,
+        case_sensitive=False,
+    )
+
+    base_url: str = "https://api.semanticscholar.org/graph/v1"
+    api_key: str = ""  # Optional API key for higher rate limits
+    max_results: int = 100
+    max_retries: int = 3
+    rate_limit_delay: float = 1.0  # Delay in seconds between API calls
+    pdf_cache_dir: str = str(PROJECT_ROOT / "data/scholar_pdfs")
+    fields_of_study: list[str] = Field(default_factory=lambda: ["Computer Science", "Engineering", "Mathematics", "Physics"])
+    paper_fields: list[str] = Field(
+        default_factory=lambda: [
+            "title",
+            "abstract",
+            "publicationDate",
+            "year",
+            "venue",
+            "authors",
+            "url",
+            "fieldsOfStudy",
+            "isOpenAccess",
+            "openAccessPdf",
+            "referenceCount",
+            "citationCount",
+            "tldr",
+        ]
+    )
+
+
 class Settings(BaseConfigSettings):
     """
     Main configuration settings for the project, aggregating all individual service settings.
@@ -72,6 +111,9 @@ class Settings(BaseConfigSettings):
 
     # OpenSearch settings
     opensearch: OpenSearchSettings = Field(default_factory=OpenSearchSettings)
+
+    # Semantic Scholar settings
+    semantic_scholar: SemanticScholarSettings = Field(default_factory=SemanticScholarSettings)
 
     @field_validator("postgres_database_url")
     @classmethod
