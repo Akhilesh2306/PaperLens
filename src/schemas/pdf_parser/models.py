@@ -1,3 +1,7 @@
+"""
+File containing Pydantic models for representing the structured content extracted from PDFs, including sections, figures, tables, and metadata about the parsing process. These models are used to standardize the output of different PDF parsers and facilitate downstream processing and analysis of the extracted content.
+"""
+
 # Import external libraries
 from enum import Enum
 from typing import Any, Dict, List, Optional
