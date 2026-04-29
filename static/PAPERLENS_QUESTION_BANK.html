@@ -372,6 +372,182 @@
     // ============================================================
     const questions = [
 
+        // ── Week 2: Semantic Scholar Client ─────────────────────
+        {
+            zone: "zone1",
+            domain: "API Clients",
+            week: 2,
+            difficulty: "Foundational",
+            question: "Why use timestamp-based rate limiting instead of a token bucket for the Semantic Scholar client?",
+            answer: `<strong>Complexity should match the use case.</strong>
+            <ul>
+                <li><strong>Timestamp tracking</strong>: before each request, check <code>now - last_request_time</code>. If less than the minimum interval, <code>await asyncio.sleep(difference)</code>. Simple, deterministic, ~5 lines of code.</li>
+                <li><strong>Token bucket</strong>: maintains a pool of tokens that refill at a fixed rate. Each request consumes a token. If empty, wait. More complex but handles <strong>concurrent callers</strong> safely because consuming a token is atomic.</li>
+                <li>In PaperLens, the MetadataFetcher calls the S2 client <strong>sequentially</strong> for search/batch operations. Downloads go to PDF URLs (different servers), not the S2 API. So there are no concurrent callers of rate-limited endpoints.</li>
+                <li><strong>When to switch</strong>: if multiple coroutines or microservices share one API rate limit budget, token bucket becomes necessary.</li>
+            </ul>`
+        },
+        {
+            zone: "zone1",
+            domain: "API Clients",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "Why retry on 429 (rate limit) and 5xx (server error) but NOT on 400 (bad request) and 404 (not found)?",
+            answer: `<strong>Retry transient errors, fail fast on permanent ones.</strong>
+            <ul>
+                <li><strong>429</strong>: "You're calling too fast." Wait a bit and try again — the request itself is valid, you just need to slow down. Transient by definition.</li>
+                <li><strong>5xx</strong>: Server-side issue (overload, deployment, temporary outage). Often resolves on its own within seconds/minutes. Worth retrying.</li>
+                <li><strong>400</strong>: "Your request is malformed." The query string is wrong, a required field is missing, etc. Retrying the <em>exact same request</em> will produce the <em>exact same error</em>. Pointless.</li>
+                <li><strong>404</strong>: "This paper doesn't exist." Retrying won't make it appear. It's a permanent fact about the data.</li>
+                <li><strong>Exponential backoff</strong>: wait <code>2^attempt</code> seconds (1, 2, 4). Avoids thundering herd — all clients retrying at the same time would make a 429 situation worse.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "API Clients",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "The S2 batch endpoint (POST /paper/batch) returns null for paper IDs it can't find. What happens if you don't handle this, and how should you fix it?",
+            answer: `<strong>Unhandled nulls crash Pydantic validation.</strong>
+            <ul>
+                <li>The API returns: <code>[{"paperId": "abc", ...}, null, {"paperId": "def", ...}]</code></li>
+                <li>Without filtering: <code>SemanticScholarPaper(**None)</code> → <code>TypeError: argument of type 'NoneType' is not iterable</code></li>
+                <li><strong>Fix</strong>: <code>[SemanticScholarPaper(**p) for p in response_data if p is not None]</code></li>
+                <li>This is a common pattern when working with batch APIs — always assume some items in the response may be null/missing. Defensive parsing prevents one bad item from crashing the entire batch.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "API Clients",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "The S2 search endpoint returns {\"data\": [...]} but the batch endpoint returns a raw array [...]. Why is this a common source of bugs, and how do you guard against it?",
+            answer: `<strong>Inconsistent API response shapes across endpoints.</strong>
+            <ul>
+                <li><code>GET /paper/search</code> returns <code>{"total": 15117, "offset": 0, "data": [...]}</code> — a wrapper object with pagination metadata.</li>
+                <li><code>POST /paper/batch</code> returns <code>[{...}, null, {...}]</code> — a raw JSON array, no wrapper.</li>
+                <li>If you write <code>response_data.get("data", [])</code> for both, the batch call crashes with <code>AttributeError: 'list' object has no attribute 'get'</code>.</li>
+                <li><strong>Guard</strong>: read the API docs for each endpoint separately. Don't assume response shapes are consistent. The search method uses <code>.get("data", [])</code>, the batch method uses the response directly.</li>
+            </ul>`
+        },
+        {
+            zone: "zone1",
+            domain: "API Clients",
+            week: 2,
+            difficulty: "Foundational",
+            question: "Why must the S2 API fields parameter use camelCase (e.g., 'fieldsOfStudy') instead of your schema's snake_case (e.g., 'fields_of_study')?",
+            answer: `<strong>The fields parameter tells the API what to return — it must use the API's naming convention.</strong>
+            <ul>
+                <li>When you send <code>?fields=title,fieldsOfStudy,isOpenAccess</code>, the S2 server looks up those exact field names in its database. It doesn't know about your Python naming conventions.</li>
+                <li>If you send <code>?fields=fields_of_study</code>, the API returns 400 (bad request) or silently ignores the unknown field — returning null for data you actually need.</li>
+                <li>Your <code>SemanticScholarPaper</code> schema uses <code>alias="fieldsOfStudy"</code> with <code>populate_by_name=True</code> — Pydantic handles the camelCase→snake_case conversion when parsing the response.</li>
+                <li><strong>Dangerous silent failure</strong>: if you omit <code>openAccessPdf</code> from fields, every paper's PDF URL is null. The download pipeline silently skips all papers. No error, no data.</li>
+            </ul>`
+        },
+        {
+            zone: "interview",
+            domain: "API Clients",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "\"You're building an API client that needs to respect rate limits and handle transient failures. Walk me through your approach.\"",
+            answer: `"Our Semantic Scholar client centralizes all HTTP calls through a single <code>_make_request()</code> method. This gives us one place for rate limiting, retries, and error handling.
+            <ul>
+                <li><strong>Rate limiting</strong>: we track <code>_last_request_time</code> and <code>asyncio.sleep()</code> the difference before each call. Simple timestamp approach since we have a single caller — for concurrent access, we'd switch to a token bucket.</li>
+                <li><strong>Retry with exponential backoff</strong>: only for transient errors (429 rate limit, 5xx server errors). Backoff is <code>2^attempt</code> seconds. Non-retryable errors (400 bad request, 404 not found) fail immediately — retrying won't change the outcome.</li>
+                <li><strong>Error mapping</strong>: <code>_handle_response_errors()</code> maps HTTP status codes to specific exception classes. Callers can catch <code>SemanticScholarRateLimitError</code> separately from <code>SemanticScholarBadRequest</code>.</li>
+                <li><strong>Headers</strong>: API key included only when configured (optional auth for higher rate limits).</li>
+                <li>Each public method (<code>search_papers</code>, <code>get_papers_batch</code>) builds the right URL and params, delegates to <code>_make_request()</code>, and parses the response into Pydantic models."</li>
+            </ul>`
+        },
+
+        // ── Week 2: PDF Parser ─────────────────────────────────
+        {
+            zone: "zone1",
+            domain: "PDF Parsing",
+            week: 2,
+            difficulty: "Foundational",
+            question: "Why does PaperLens have both DoclingParser and PDFParserService instead of just one class?",
+            answer: `<strong>Separation of concerns — parser implementation vs parsing orchestration.</strong>
+            <ul>
+                <li><code>DoclingParser</code> knows how to use the Docling library: configure the converter, validate PDFs, extract sections. It's sync (CPU-bound) and library-specific.</li>
+                <li><code>PDFParserService</code> is a thin async wrapper: validates the file exists, delegates to DoclingParser via <code>asyncio.to_thread()</code>, standardizes error handling.</li>
+                <li><strong>If you add a second parser</strong> (e.g., PyMuPDF for fallback), the service would try Docling first, fall back to PyMuPDF — without changing either parser class. Open/Closed Principle.</li>
+                <li>The service is what the rest of the app (MetadataFetcher) calls. It never knows or cares that Docling exists underneath.</li>
+            </ul>`
+        },
+        {
+            zone: "zone1",
+            domain: "PDF Parsing",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "DoclingParser.parse_pdf() is synchronous, but the rest of PaperLens is async. How do you prevent it from blocking the event loop, and why?",
+            answer: `<strong>Use asyncio.to_thread() to offload CPU-bound work.</strong>
+            <ul>
+                <li>Docling runs ML models for layout detection and table extraction — <strong>CPU-bound</strong> work. There's nothing to <code>await</code> inside it.</li>
+                <li>If you put CPU-bound code in an <code>async def</code>, it <strong>blocks the event loop</strong>. While Docling parses a 30-page PDF for 45 seconds, your entire FastAPI server stops handling requests.</li>
+                <li><code>await asyncio.to_thread(sync_function, arg)</code> runs the function in a <strong>thread pool</strong>. The event loop stays free to handle other requests while the thread does the heavy lifting.</li>
+                <li>Alternative: <code>loop.run_in_executor()</code> — same idea, slightly lower-level API.</li>
+                <li><strong>Interview gold</strong>: "How do you handle CPU-bound work in an async Python app?" → "Thread pool via <code>asyncio.to_thread()</code>. Never put blocking code in a coroutine."</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "PDF Parsing",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "PDF validation returns None for size/page limit violations but raises PDFValidationError for corrupted files. Why the different behavior?",
+            answer: `<strong>Different failures require different caller responses.</strong>
+            <ul>
+                <li><strong>Size/page limits</strong>: the PDF is valid, just too big. This isn't an error — it's a deliberate policy choice. The MetadataFetcher should store the paper's metadata (from S2 API) without PDF content. Return <code>None</code> → caller continues.</li>
+                <li><strong>Corrupted/invalid PDF</strong>: something is genuinely wrong (no PDF header, empty file). The caller should log this as a real problem and potentially alert. Raise an exception → caller decides whether to retry or report.</li>
+                <li><strong>Graceful degradation</strong>: not every paper needs a parsed PDF. The pipeline should never let one problematic PDF kill the entire batch. Storing metadata without parsed content is better than storing nothing.</li>
+                <li>The MetadataFetcher will catch <code>None</code> from parsing and still upsert the paper with <code>pdf_processed=False</code>.</li>
+            </ul>`
+        },
+        {
+            zone: "zone2",
+            domain: "PDF Parsing",
+            week: 2,
+            difficulty: "Foundational",
+            question: "The section extraction uses a state machine pattern. Why not just split the text by headers using regex?",
+            answer: `<strong>Docling already did the hard work of identifying headers — use its labels, not regex.</strong>
+            <ul>
+                <li>Docling's ML model classifies each text element with a <code>label</code>: "title", "section_header", "paragraph", etc. This is semantically accurate — it understands document layout.</li>
+                <li>Regex-based splitting is fragile: "3.1 Results" looks like a header, but so does "Section 3.1 shows that..." in the middle of a paragraph. Regex can't distinguish them without layout context.</li>
+                <li>The state machine accumulates paragraphs under the current section header. When a new header appears, it saves the current section and starts a new one.</li>
+                <li>The default title "Content" catches text before the first header (abstract, author info, etc.) — text that would be lost with a naive header-split approach.</li>
+            </ul>`
+        },
+        {
+            zone: "zone1",
+            domain: "PDF Parsing",
+            week: 2,
+            difficulty: "Foundational",
+            question: "Why does the PDF parser factory use @lru_cache but the Semantic Scholar client factory doesn't?",
+            answer: `<strong>Different initialization costs.</strong>
+            <ul>
+                <li><code>DoclingParser</code> creates a <code>DocumentConverter</code> which loads ML models (layout detection, table structure) on first use. This takes 10-30 seconds and significant memory. Creating it twice would double the cost.</li>
+                <li><code>SemanticScholarClient</code> just stores a settings object and initializes <code>_last_request_time = 0.0</code>. Essentially free to create.</li>
+                <li><code>@lru_cache(maxsize=1)</code> ensures exactly one <code>PDFParserService</code> exists. All callers share the same Docling models in memory.</li>
+                <li><strong>Trade-off</strong>: caching means you can't create a second parser with different settings. Fine for PaperLens (one parser config), but in a multi-tenant system you might need per-tenant parsers.</li>
+            </ul>`
+        },
+        {
+            zone: "interview",
+            domain: "PDF Parsing",
+            week: 2,
+            difficulty: "Intermediate",
+            question: "\"How do you handle PDF processing in your pipeline? What happens when a PDF fails to parse?\"",
+            answer: `"We use Docling (IBM's open-source parser) for structured extraction from scientific PDFs. The architecture has three layers:
+            <ul>
+                <li><strong>Validation layer</strong>: before parsing, we check file size, page count, PDF header validity, and emptiness using pypdfium2. This is cheap — catching problems before wasting CPU on Docling's ML models.</li>
+                <li><strong>Parsing layer</strong>: Docling extracts sections (with hierarchy), tables (with content), figures, and raw text. It uses layout detection models to classify text elements as headers, paragraphs, etc.</li>
+                <li><strong>Error handling</strong>: three outcomes — success (return PdfContent), graceful skip (PDF too big → return None, store metadata only), or failure (corrupted → raise, log for investigation).</li>
+                <li>Since Docling is CPU-bound, we run it via <code>asyncio.to_thread()</code> to avoid blocking FastAPI's event loop.</li>
+                <li>The factory uses <code>@lru_cache</code> because Docling loads ML models on init (~20 seconds). We want exactly one instance shared across the application."</li>
+            </ul>`
+        },
+
         // ── Week 1: Docker / Containerization ──────────────────
         {
             zone: "zone1",
