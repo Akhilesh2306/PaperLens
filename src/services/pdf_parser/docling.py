@@ -107,7 +107,7 @@ class DoclingParser:
             logger.error(f"Error validating the PDF file: {e}")
             raise PDFValidationError(f"Error validating the PDF file: {e}")
 
-    def parse_pdf(self, pdf_path: Path):
+    def parse_pdf(self, pdf_path: Path) -> PdfContent:
         """
         Parse the PDF file and return structured content.
 
