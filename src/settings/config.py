@@ -87,6 +87,25 @@ class SemanticScholarSettings(BaseConfigSettings):
     )
 
 
+class PDFParserSettings(BaseConfigSettings):
+    """
+    Configuration settings for PDF parser.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(ENV_FILE_PATH)],
+        env_prefix="PDF_PARSER__",
+        extra="ignore",
+        frozen=True,
+        case_sensitive=False,
+    )
+
+    max_pages: int = 100
+    max_file_size_mb: int = 50
+    do_ocr: bool = False
+    do_table_structure: bool = True
+
+
 class Settings(BaseConfigSettings):
     """
     Main configuration settings for the project, aggregating all individual service settings.
@@ -114,6 +133,9 @@ class Settings(BaseConfigSettings):
 
     # Semantic Scholar settings
     semantic_scholar: SemanticScholarSettings = Field(default_factory=SemanticScholarSettings)
+
+    # PDF parser settings
+    pdf_parser: PDFParserSettings = Field(default_factory=PDFParserSettings)
 
     @field_validator("postgres_database_url")
     @classmethod
