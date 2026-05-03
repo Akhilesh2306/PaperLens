@@ -64,6 +64,8 @@ class SemanticScholarSettings(BaseConfigSettings):
     base_url: str = "https://api.semanticscholar.org/graph/v1"
     api_key: str = ""  # Optional API key for higher rate limits
     max_results: int = 100
+    max_concurrent_downloads: int = 5
+    max_concurrent_parses: int = 1
     max_retries: int = 3
     rate_limit_delay: float = 1.0  # Delay in seconds between API calls
     pdf_cache_dir: str = str(PROJECT_ROOT / "data/scholar_pdfs")
